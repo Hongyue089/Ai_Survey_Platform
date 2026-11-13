@@ -1,0 +1,1713 @@
+Project List Module
+1. 模块目标
+实现一个项目列表页面；用户登录后可查看自己参与的项目，并可对项目进行搜索、排序；页面提供新建项目入口。本模块定义“Create new project”按钮在 Project List 中的入口位置及基础交互，即点击后直接创建默认 Survey 并跳转至 Builder；Survey 初始化时涉及的数据库创建规则、默认数据生成以及 Builder 初始化等具体实现，在“新建项目”及相关模块中进一步定义。
+V1 仅支持 Survey 类型项目；数据库保留 project_type 字段，为以后扩展其他项目类型做准备。
+*UI Fidelity Requirement：本页面必须以提供的 Project List 原型图为唯一视觉设计基准。开发时应优先复现原型中的页面布局、组件位置、信息层级、间距关系、按钮形态、背景关系及文字排列，不得在没有明确需求的情况下自行增加 Card、Table Header、Action Menu、Sidebar、Modal 或其他原型图中不存在的 UI 元素。功能需求与原型图发生视觉设计冲突时，优先保留原型图的视觉结构，并在不改变视觉结构的前提下实现功能。
+2. 页面展示内容
+原型图：
+页面整体从上至下分为：1、顶部全局导航区域；2、项目操作工具栏；3、Survey Project 列表；4、列表数量显示区域。
+页面整体背景为浅灰色；顶部导航区域和 Survey 列表项目采用白色背景。
+不使用卡片式 Dashboard 布局，不将每个 Survey 显示为独立悬浮 Card；每个 Survey 应占据一整行横向区域，并通过浅色分隔线区分不同项目。
+1、顶部全局导航区域
+页面最顶部为白色导航区域。左上角显示 Hamburger Menu 图标，用于进入平台的全局导航。右上角显示圆形 ? Help 图标。除此之外，该区域不显示 Survey Project 相关功能。
+顶部导航栏高度、图标位置以及整体留白按照原型图实现。
+2、项目操作工具栏
+顶部导航栏下方设置一条浅灰色项目操作工具栏。
+工具栏左侧依次包含：- Filter 图标；- 排序下拉框。
+项目列表默认按照最近修改时间降序排列，即 updated_at DESC；最近修改的项目显示在最前面。
+页面提供排序下拉框；V1 允许的排序选项包括 Last modified、Date created、Name A–Z、Name Z–A、Responses；前端只允许选择预先定义的排序选项，后端将这些选项映射为允许排序的数据库字段，不允许前端直接传入任意数据库字段名。
+对应关系可定义为：Last modified → updated_at DESC；Date created → created_at DESC；Name A–Z → survey_name ASC；Name Z–A → survey_name DESC；Responses → response_count DESC。
+工具栏右侧依次包含：
+- Project Name 搜索框；
+- Create new project 按钮。
+搜索框视觉样式按照原型图设计，为白色圆角输入框，内部左侧显示 Search 图标。
+Placeholder 使用：search Title
+Project Name 搜索框的搜索功能
+页面右上角提供项目名称搜索框；搜索字段为 survey_name；支持模糊搜索，即名称中包含输入文本即可匹配；搜索内容最大长度为 100 个字符；搜索前去除用户输入内容前后的空格。
+数据库查询可使用类似 SQL LIKE / ILIKE 的包含匹配方式，例如搜索内容为 AI 时，逻辑上相当于匹配 %AI%；具体 SQL 写法由所使用的数据库决定，如果使用 PostgreSQL，可优先考虑 ILIKE 实现英文大小写不敏感搜索。
+搜索和排序可以同时使用；例如用户搜索 AI 并选择 Last modified 时，应先筛选名称包含 AI 的项目，再按照 updated_at DESC 返回结果。
+项目权限与查询范围
+项目列表只显示当前用户有权限访问的项目；不能仅通过 creator_id = current_user_id 查询，因为一个 Survey 可能由多个用户共同参与。
+用户与 Survey 的关联通过 T_survey_members 表管理；系统根据当前登录用户的 user_id 查询 T_survey_members，取得该用户参与的 survey_id，再关联 T_survey 查询项目详细信息。
+不使用在单个字段中以逗号连接多个 user_id 的方式记录项目成员；成员关系使用独立的关联表维护。
+搜索对象为 survey_name。
+新建项目
+Create new project 为页面中的主要操作按钮，使用蓝色实心按钮样式，位于页面右上角搜索框右侧。
+页面操作入口：新建后生成唯一survey_ID，统一命名为新建问卷（new survey）,跳转到builder页面开始编辑。不需要任何弹窗或操作提示。不增加额外操作步骤。Survey Name 可以在进入 Builder 后继续修改。
+点击：Create new project后：
+1. 后端创建新的 Survey；
+2. 自动生成全局唯一 survey_id；
+3. project_type = survey；
+4. 默认 survey_name = New Survey；
+5. 默认 status = draft；
+6. 创建成功后立即跳转进入该 Survey 的 Builder 页面。
+3、 Survey Project 列表
+Project List 采用纵向列表结构。每一个 Survey Project 占据独立的一整行。每行分为左右两个信息区域。
+左侧信息区域依次显示：
+项目类型：survey。项目类型使用较小字号显示，并位于 Survey Name 上方。
+Survey Name 使用较大字号显示，例如：Test Survey 1
+Survey Name 下方显示最近修改时间，例如：saved at Jun 21 , 2026
+因此单个 Survey 左侧视觉层级固定为：
+project_type
+↓
+survey_name
+↓
+saved at + updated_at
+其中 survey_name 为左侧区域最明显的信息。
+右侧统计信息区域
+Survey 行右侧从左至右固定显示三个信息区：Status、Question、responses
+每个信息区均采用：值在上方，字段名称在下方的纵向排版。
+三个信息区域在水平方向保持固定间距并对齐。
+不得改变为表格表头 + 数据行的传统 Table 形式。
+每个项目在列表中展示以下信息：项目类型 project_type，V1 固定为 survey；项目名称 survey_name；最近修改时间 updated_at；项目状态 status；问题数量 question_count；有效回答数量 response_count。
+updated_at 表示项目最近一次发生实际内容修改的时间；添加问题、删除问题、修改问题内容、修改 Logic、修改 Survey 设置等操作均更新 updated_at；仅打开 Survey、查看 Survey 或 Preview Survey 时不更新 updated_at。
+status V1 使用以下三个状态：draft（尚未发布）、published（已发布并可以收集正式回答）、closed（已停止招募回答）
+前端显示文本分别为Draft、Published、Closed
+状态值本身使用明显颜色进行区分：Draft：蓝色；Published：绿色；Closed：黑色。
+下方的 Status 标签仍使用普通深灰色文字。
+Status 不使用整个 Badge 背景块，不采用实心 Tag 样式；按照原型图，仅状态文字本身使用对应颜色。
+Question 区域显示：question_count
+下方固定显示：Question
+question_count 表示该 Survey 中可回答 Question 的数量，不包含 Block。
+Text / Graphic 等仅用于说明、无法产生受访者回答的数据内容不计入 question_count。
+Response 区域显示：response_count
+下方固定显示：responses
+数字本身使用较大字号，字段名称使用较小字号。
+Question、responses 与 Status 三个区域视觉权重一致。
+response_count 表示有效正式提交的回答数量，不包含 Preview、开发测试或测试提交产生的数据；如果未来通过 PureSpectrum 等外部样本平台招募受访者，回答数据仍进入本平台 Survey 的 response 数据体系；PureSpectrum 联动、transaction ID、quota、callback 等具体机制在“外部样本平台联动”模块中单独定义。
+交互
+整个 Survey Project 行为可点击区域。点击某个 Survey Project 后，进入该 Survey 的 Builder 页面。Hover 时可以提供非常轻微的背景变化，用于提示当前项目可点击，但不得明显改变原型图的整体视觉结构。
+4、项目数量显示
+Project List 使用数据库分页查询，不一次性加载当前用户全部 Project。V1 默认 page_size = 20，后续可根据实际使用情况调整。数据处理顺序固定为：权限过滤 → 搜索过滤 → 排序 → Pagination。
+即首先确定当前用户可以访问的 Survey，再根据 survey_name 搜索条件过滤，根据当前排序规则排序，最后取得指定页的数据。当搜索条件或排序条件发生变化时，分页自动回到第 1 页。
+页面底部中央设置分页控件，视觉位置与样式按照原型图实现。分页控件显示当前页、相邻页、必要的省略号以及最后一页，例如：1   2   3   ...   17   >
+当前页使用蓝色文字，并在文字下方显示蓝色下划线；非当前页使用深色文字。
+> 用于进入下一页。在存在上一页时，应提供对应的上一页操作。
+当总页数较少时，不显示不必要的省略号。当仅存在 1 页数据时，分页区域仍保持原型中的底部位置，仅显示当前页 1。Project List 底部同时保留项目数量指示器，其位置位于项目列表下方、分页控件上方。显示格式为：shown_count of total
+例如：2 of 2
+当当前筛选结果为空时显示：0 of 0total 表示经过权限过滤和搜索过滤后的项目总数量。shown_count 表示从第 1 页至当前页累计覆盖的项目数量，计算方式为：min(page × page_size, total)因此总数为 53、page_size = 20 时，第 1 页显示 20 of 53，第 2 页显示 40 of 53，第 3 页显示 53 of 53。
+项目数量指示器采用横线中断式布局：左右各有一条水平细线，中间显示数量文本，例如 2 of 2 或 0 of 0。该结构在正常状态、空状态和加载失败状态下均保留，以维持页面垂直结构的一致性。 
+3. 数据输入
+该模块的主要输入包括：当前登录用户的唯一标识 user_id；搜索关键字 search_keyword，对应 survey_name；排序选项 sort_option；分页参数 page 和 page_size。
+user_id 用于确定用户可访问的 Survey；search_keyword 用于项目名称模糊搜索；sort_option 用于确定结果排序方式；page 与 page_size 用于数据库分页查询。
+4. 数据输出
+后端返回当前用户有权限访问并符合搜索及排序条件的项目列表；每个项目至少包含 survey_id、project_type、survey_name、created_at、updated_at、status、question_count、response_count。
+同时返回分页信息，包括当前页 page、每页数量 page_size、符合条件的总项目数量 total。
+概念性输出结构如下：
+{
+  "items": [
+    {
+      "survey_id": "srv_xxxxxxxx",
+      "project_type": "survey",
+      "survey_name": "Temp1",
+      "created_at": "2026-09-01T10:00:00",
+      "updated_at": "2026-09-20T13:30:00",
+      "status": "draft",
+      "question_count": 12,
+      "response_count": 6
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 1
+}
+5. 异常状态
+当前用户没有任何项目时显示：No projects yet. Create your first survey.；搜索后没有匹配结果时显示：No projects found for "..." .；项目列表加载失败时显示：Failed to load projects. Retry.；数据加载过程中显示 loading indicator；项目创建失败的提示由“新建项目模块”负责，本模块不处理具体创建逻辑。
+异常状态下不得替换整个 Project List 页面，也不得跳转至独立错误页面。
+顶部全局导航区域、项目操作工具栏、排序下拉框、搜索框以及 Create new project 按钮继续正常显示，并保持与正常状态相同的位置和视觉样式。
+Survey Project 列表区域在没有可展示项目时保持为空白区域。
+项目数量指示器仍然显示，并根据当前数据状态显示相应数量，例如：0 of 0（即使项目列表为空，0 of 0 那条横线仍然保留。）
+分页区域仍位于页面底部中央。若当前不存在有效数据页，则显示第 1 页的静态分页状态，保持页面整体布局稳定。
+当项目列表请求失败时，在列表内容区域中央显示：Failed to load projects. Please Retry. 文案使用浅灰蓝色，与原型图一致。
+错误信息应位于主要内容区域视觉中心，不使用 Modal、Dialog、Toast 或大型错误卡片替代该页面状态。页面顶部已有操作区域保持可用。
+如实现 Retry 交互，可将 Retry 作为可点击文本或后续单独按钮定义，但不得改变当前原型的整体布局。
+当前用户没有任何项目时，在列表主要内容区域中央显示：No projects yet. Create your first survey.
+搜索条件下不存在匹配项目时显示：No projects found for "{search_keyword}".
+上述状态沿用与加载失败状态相同的页面结构与文字位置；不得增加原型中不存在的大型 Illustration、Card 或弹窗。
+项目数据加载过程中，在 Project List 内容区域显示轻量 Loading Indicator。
+Loading 不覆盖顶部全局导航及项目操作工具栏，不使用全屏遮罩；加载完成后仅替换列表内容区域。
+6. V1 范围
+V1 实现项目列表展示、用户项目权限过滤、项目名称模糊搜索、项目排序、数据库分页及异常状态显示；V1 仅支持 Survey 类型项目。
+V1 暂不实现项目标签、项目收藏、批量操作、项目归档、12-day trend、多人权限管理 UI 以及 PureSpectrum 等外部样本平台的具体联动；上述功能在后续独立模块中定义。
+Survey Builder Module
+1、模块目标
+实现 Survey 的新建与编辑功能；用户可以对 Survey 中的 Block 和 Question 进行新增、查看、修改、删除、恢复及永久删除，并可以对不同类型的 Question 进行详细配置。
+V1 不实现拖拽排序功能；Question 和 Block 的顺序仍需要通过 sort_order 等字段保存，为后续增加排序功能预留数据结构。
+整体界面与交互参考 Qualtrics Survey Builder；与 Qualtrics 不同的功能或交互方式在本说明书中单独定义。
+V1 支持以下 Question Type：Multiple Choice Question、Text Entry Question、Text / Graphic Question、Matrix Table Question；Slider、Rank Order、File Upload、Graphic Upload、Hot Spot、图片点击等其他 Question Type 暂不实现。
+*UI Fidelity Requirement：本页面必须以提供的 Builde原型图为唯一视觉设计基准。开发时应优先复现原型中的页面布局、组件位置、信息层级、间距关系、按钮形态、背景关系及文字排列，不得在没有明确需求的情况下自行增加 Card、Table Header、Action Menu、Sidebar、Modal 或其他原型图中不存在的 UI 元素。功能需求与原型图发生视觉设计冲突时，优先保留原型图的视觉结构，并在不改变视觉结构的前提下实现功能。
+2、页面整体布局
+原型图：
+页面整体由以下区域组成：顶部全局导航区域、Survey 一级导航、Survey 内部纵向功能导航、左侧编辑栏、右侧问卷编辑主界面、Builder 顶部状态栏以及底部操作栏。
+顶部最左侧显示 Hamburger Menu，右上角显示 ? Help 图标。
+其下方为 Survey 一级导航：Survey / Distribution / Analysis / Report。当前 Builder 属于 Survey 模块，因此 Survey 使用蓝色文字及蓝色下划线表示选中状态。
+页面最左侧设置窄型纵向功能导航，从上至下分别对应：Builder、Flow、Options。当前位于 Builder 时，Builder 图标区域使用浅蓝色背景进行高亮。
+Builder 主体采用左右两栏布局。左侧为属性编辑栏，用于编辑当前选中的 Question 或 Block。右侧为 Survey Builder 主编辑区域，用于按照：Survey → Block → Question的结构显示整个 Survey。
+Question Text、Multiple Choice Choices、Matrix Statements、Scale Point Labels 等主要内容均在右侧主编辑区域直接编辑，而不是全部放入左侧属性面板。
+页面一次只能选中一个 Question 或一个 Block。当前选中的对象使用蓝色边框高亮。
+当选中 Question 时，左侧显示 Edit Question 以及当前 Question Type 对应的设置。
+当选中 Block 时，左侧切换为 Block 设置，例如 Block Name。
+没有选中任何 Block 或 Question 时，左侧保持 Edit Question 区域，但显示：Please Select One Block/Question。不得因为未选中对象而隐藏整个左侧编辑栏。
+3、新建 Survey 时的默认结构
+新建 Survey 后，系统自动生成一个空白 Block，但不自动生成任何 Question。
+默认结构如下：
+Survey
+└── Block 1
+    └── + Add new question
+Block 内底部右侧显示蓝色主按钮：+ Add new question。点击后在当前 Block 中增加 Question。
+每个 Block 下方显示：Add Block，用于新建下一个 Block。
+Add Block 按照原型设计为横向细边框按钮，占据 Builder 主区域的大部分宽度，不使用大型实心按钮样式。
+V1 不实现 Import from Library。V1 不自动生成 Info Sheet。如果需要调查说明页，由用户自行创建 Text / Graphic Question。
+End of Survey 不作为普通 Question 存储或编辑，结束节点以及 Survey 结束逻辑由 Flow 模块定义。
+4、Builder 主编辑区域
+右侧 Builder 主界面按照 Block 顺序纵向排列。
+每个 Block 顶部显示：折叠 / 展开图标以及：Block Name；例如：Info sheet
+点击折叠图标后可以隐藏或重新显示该 Block 内的 Question。Block 的折叠状态只属于 Builder UI 状态，不影响 Published Survey，也不改变受访者看到的问卷结构。
+Block 内部按 Question 顺序纵向排列 Question。
+V1 不支持通过拖拽调整 Block 或 Question 顺序。
+Question 被选中时，其外层显示蓝色边框。不同 Question Type 的内部编辑方式可以不同，但整体 Question 容器的选择状态保持一致。
+5、 Block 功能
+每个 Block 至少包含 block_id、block_name、sort_order、所包含的 Question 信息以及删除状态。
+Block 可以展开或折叠；折叠仅影响 Builder 页面显示，不影响实际 Survey 数据和 Question 顺序。
+选中 Block 后显示蓝色高亮边框；左侧编辑栏显示该 Block 的相关设置。
+删除 Block 时，不立即永久删除；Block 被标记为已删除，同时该 Block 中所属 Question 一并进入 Trash，并保留原有父子关系。
+恢复整个 Block 时，其内部 Question 应一并恢复。
+6、Question 功能
+Question 的主要内容在 Builder 主界面中直接编辑。
+包括但不限于：Question Text；Multiple Choice 的 Choice Labels；Matrix Table 的 Statements；Matrix Table 的 Scale Point Labels。
+文本进入编辑状态时显示蓝色边框。未进入编辑状态的现有文本直接以普通文字形式显示。对于尚未填写的新增内容，使用灰色 Placeholder，例如：statement 4；Scale Point 5
+Placeholder 仅用于提示该位置的含义和顺序，不作为真实 Question 数据保存。
+1、Question 通用规则
+每个 Question 都需要生成唯一的 question_id / UUID；Question ID 创建后保持稳定，不因修改 Question 内容而改变。
+Question 至少包含以下通用信息：question_id、所属 block_id、question_name、question_type、问题文字 question_text、sort_order、是否必填、具体 Question 配置以及删除状态。
+question_name 为研究者内部使用的问题名称，例如 Q1、Q2_gender；question_text 为受访者实际看到的问题内容。
+Question 的具体配置根据 Question Type 不同而变化。
+左侧编辑栏最上方首先提供 Question Name 输入框；其下为 Question Type 和当前 Question Type 对应的配置项。
+左侧编辑栏最下方提供 Delete 按钮；删除后 Question 的 is_deleted 设置为 1，正常 Builder 查询时不再返回该 Question。
+2、Multiple Choice Question
+Multiple Choice Question 支持单选与多选。
+左侧编辑栏包含以下配置：Question Name；Answer Type；Number of Choices；Format；Required；Minimum Selection；Maximum Selection；Layout。
+Answer Type
+使用下拉框选择：Single Answer、Multiple Answers
+当选择 Single Answer 时，Minimum Selection 和 Maximum Selection 自动固定为 1；相关输入框显示为不可编辑的灰色状态。当选择 Multiple Answers 时，可单独设置 Minimum Selection 和 Maximum Selection。
+Number of Choices
+使用数字选择器，通过 + / - 调整 Choice 数量。
+V1 前端最大允许 20 个 Choices；该限制仅属于 V1 产品限制，不作为数据库层面的固定上限，未来可以扩大。
+Choice 的实际文字内容在右侧 Builder 主界面中直接编辑。生成时默认写出Choice1、Choice2..但是作为placeholder属性显示，点击后消失。
+每个 Choice 自动生成稳定的 choice_id / value，用于保存回答和后续 Logic 判断。
+Format
+支持：List、Dropdown
+当选择 List 时，所有 Choices 直接显示在问卷页面中。
+当选择 Dropdown 时，以 Dropdown 形式显示；Builder 中提供 Click here to edit choices. 入口，点击后通过弹窗修改 Choices 内容。
+Layout
+仅在 List Format 下使用。
+V1 支持：Vertical、Horizontal、2 Columns、3 Columns
+Horizontal 在 V1 中仅支持标签位于选项上方的布局。
+Multiple Choice 数据
+单选回答使用单个 Choice value；多选回答在前端及 API 中使用数组，例如：[1, 2]；不使用 "1,2" 等逗号分隔字符串保存多选回答。Response 在数据库中的最终存储形式由 Response 模块单独定义。
+3、Text Entry Question
+Text Entry Question 用于收集自由文本。
+左侧编辑栏包含：Question Name；Input Type；Placeholder；Required；Maximum Characters。Question Text 不在左侧重复设置，而是在右侧 Builder 主界面中直接编辑。
+Input Type
+支持：Single Line、Text Area
+Single Line 用于较短文本；Text Area 用于较长回答。
+Placeholder
+Placeholder 以淡灰色提示文字显示，仅用于引导回答，不属于真实回答内容。
+Maximum Characters
+用于限制受访者能够输入的最大字符数量。
+Text Entry 的回答内容为受访者实际输入的字符串；数据库最终如何保存 Response 由 Response 模块单独定义。
+4、Text / Graphic Question
+Text / Graphic Question 用于展示无需回答的说明性内容。
+V1 仅支持文本；图片上传、文件上传、图文混排等功能暂不实现。（例如可以用于展示：我们是某大学的研究团队，希望邀请您回答以下几个问题。）
+Text / Graphic Question 不产生 Response，也不计入可回答 Question 的数量。其文字内容直接在右侧 Builder 主界面中编辑。
+5、Matrix Table Question
+Matrix Table Question 固定布局
+Matrix Table Question 不得使用由内容自动决定行列关系的普通流式布局。Matrix 的结构固定分为三个逻辑区域：1. Question Text；2. Scale Point Header；3. Statement × Scale Point 回答矩阵。
+左侧第一列始终用于显示 Statement。第一行从第二列开始始终用于显示 Scale Point Label。回答按钮始终位于对应 Statement 与 Scale Point 的交叉位置。
+Scale Point Label 不允许进入 Statement 列；Statement 不允许进入 Scale Point Header 行。
+新增 Statement 时，只新增一整行：Statement + 对应所有 Scale Point 的回答位置不得影响已有 Scale Point Header。
+新增 Scale Point 时，只新增一整列：Scale Point Label + 所有 Statement 对应该 Scale Point 的回答位置不得与 Statement 混合插入同一 DOM 内容序列后依赖浏览器自动换行。
+Matrix Table Builder 不使用普通 HTML <table> 的自动布局作为主要编辑结构，也不使用 flex-wrap 自动换行决定 Statement 与 Scale Point 的位置。推荐使用 CSS Grid 明确定义行列。
+Matrix 编辑状态
+当前正在编辑的 Statement 或 Scale Point Label 使用蓝色圆角边框。刚创建但尚未填写内容的位置使用灰色边框或灰色 Placeholder。Question 被选中时，整个 Matrix Question 外层继续显示蓝色边框。
+Matrix 宽度不足时的处理
+如果 Scale Point 数量较多，不能为了塞进当前宽度而将 Statement 和 Scale Label 自动换到错误的行。当内容超过可用宽度时：优先保持 Matrix 行列结构；Matrix 内容区域允许横向滚动；不得破坏 Statement × Scale 的对应关系。
+Matrix Table Question 主要用于 Likert 等矩阵式问题。V1 中 Matrix Type 仅支持 Likert；界面仍保留下拉框，但下拉框内目前只有：Likert。未来可增加 Bipolar、Rank Order、Constant Sum、Text Entry、MaxDiff 等类型。
+左侧编辑栏包含：Question Name；Matrix Type；Answer Type；Number of Statements；Scale Points。
+Answer Type
+Answer Type中支持：Allow One AnsweAllow Multiple Answers
+Allow One Answer 表示每个 Statement 只能选择一个 Scale Point；Allow Multiple Answers 表示每个 Statement 可以选择多个 Scale Points。
+Number of Statements
+表示 Matrix 的行数；使用数字选择器调整。Statement 内容在右侧 Builder 主界面中直接编辑。
+Scale Points
+表示 Matrix 的列数；使用数字选择器调整。Scale Point Label 在右侧 Builder 主界面中直接编辑。
+V1 不自动生成“五点量表”“七点量表”等预设文字模板；用户自行输入 Scale Point Label。例如：非常不同意、不同意、一般、同意、非常同意。未来版本可以增加预设量表模板。
+7、顶部状态栏
+Builder 主区域顶部显示 Survey 信息和 Builder 操作。
+左侧显示 Survey Name，例如：New Survey；Survey Name 右侧显示编辑图标。点击 Survey Name 或编辑图标后，可以直接修改 Survey Name。
+Survey Name 下方显示当前保存状态 / 保存时间，例如：saved at 20:25 2026/09/26
+其右侧显示 Survey 当前状态。例如：Draft或：PublishedBuilder 中的状态样式按照 Builder 原型实现，可以使用带浅色背景的圆角状态标签。例如 Published 使用浅绿色背景和绿色文字。（注意：这一设计仅适用于 Builder 顶部状态。Project List 中 Status 仍按照 Project List 原型，仅使用彩色文字，不使用 Badge。）
+顶部右侧依次显示：Search；Trash；History。（不在顶部增加 Save 按钮。）
+1、Search
+Search 使用放大镜图标及输入框。用于搜索当前 Survey 中的 Question。
+V1 搜索字段至少包括：question_namequestion_text
+输入搜索关键词后，匹配 Question 在 Builder 中高亮，并自动滚动至第一个匹配 Question。如果存在多个匹配结果，在搜索框对应的下拉区域中显示匹配结果。
+每个结果至少显示：Block Name - Question Name或足以区分 Question 的对应文字。
+点击搜索结果后：滚动至对应 Question；选中该 Question；对应 Question 显示蓝色选中边框；左侧 Edit Question 同步切换为该 Question 的配置。Choice Label、Statement、Scale Label 等更细粒度搜索可以在后续版本增加。
+2、 Trash
+		Trash窗口原型图如下：
+Builder 顶部右侧提供：Trash按钮。点击后打开 Trash 窗口。Trash UI 以对应原型图为准，不自行设计为独立管理页面。
+Trash 顶部显示：Trash | N Question；或者在同时存在 Block 与 Question 时显示对应的删除项目数量。
+Trash 不提供：Empty Trash或永久清空全部数据操作。
+Soft Delete
+普通 Delete 不立即删除数据库记录。删除 Question 时：is_deleted = 1；Builder 正常加载 Question 时：is_deleted = 0
+Trash 查询：survey_id = 当前 SurveyAND is_deleted = 1
+删除前需要保留：block_id、sort_order以及恢复该 Question 所需要的其他原始父子关系信息。
+Block 删除
+删除整个 Block 时：Block 进入删除状态；该 Block 下的 Question 一并进入 Trash；Block 与 Question 的父子关系继续保留。Trash 中不提供直接恢复整个 Block 的统一 Restore 操作。
+用户恢复该 Block 下 Question 时，如果所属 Block 当前不存在，则系统先恢复所属 Block，再恢复对应 Question。如果原 Block 仍存在，则 Question 尽量恢复至原：block_id以及：sort_order位置。
+3、History
+		History窗口原型图如下：
+Builder 顶部右侧提供：History按钮。点击后打开 Version History 窗口。
+每条 History Record 显示：编辑用户；保存时间；Block 数量；Question 数量；版本状态；Restore 按钮。编辑用户优先显示当前账户 Email。例如：modified by user (xxx@example.com)
+如果当前 V1 尚未提供可用的用户邮箱数据，则不得生成假邮箱；此时可以暂时隐藏该信息或使用系统实际能够提供的用户标识。
+版本状态包括：Published、Applied、Autosave
+显示颜色：Published：绿色；Applied：蓝色；Autosave：灰色。
+点击：Restore后，可以将该历史版本恢复为新的 Working Version。Restore 不直接覆盖当前 Published Version。如果用户希望恢复版本正式对外生效，仍然需要再次执行：Publish。
+8、底部操作栏
+页面底部设置固定操作栏。右侧从左至右显示：Apply、Preview、Publish；按钮的位置、大小、颜色和间距按照原型实现。Apply 和 Publish 使用蓝色实心按钮。Preview 使用白色背景、蓝色边框。
+操作栏中央上沿显示圆形 / 半圆形折叠区域，其中包含向下或向上的小箭头。点击后可折叠整个底部操作栏。再次点击后恢复展开。折叠操作仅影响 Builder UI，不影响 Survey 内容。Preview 的运行逻辑由 Preview 模块定义。Publish 的运行逻辑由 Publish 模块定义。
+1、 Working Version 与 Published Version
+Builder 始终编辑 Survey 的：Working Version受访者公开访问 Survey 时，不直接读取 Builder 当前正在编辑的实时内容，而读取最近一次：Published Version
+因此整体关系为：
+Builder Edit
+        ↓
+Working Version
+        ↓
+Autosave / Apply
+        ↓
+Working Version 保存
+        ↓
+Publish
+        ↓
+Published Version
+
+Autosave 和 Apply 均不会立即改变线上 Survey。只有 Publish 才更新受访者访问的 Published Version。
+如果 Published Survey 后继续进行编辑，可以显示存在未发布修改的状态；具体 Publish Version 管理方式由 Publish 模块进一步定义。
+2、用户手动保存（Apply按钮）
+提供apply按钮；点击后立即将当前未保存内容写入数据库。
+保存成功后更新顶部 Saved at... hh/mm yyyy/mm/dd。
+3、自动保存
+Builder 同时支持自动保存和手动保存。
+用户修改 Builder 内容后，前端状态立即更新；用户停止操作后开始等待；若连续约 10 分钟没有新的修改，则触发一次 autosave。新的操作会重新开始 10 分钟计时，以避免每一次键盘输入或小修改都立即访问数据库。
+自动保存过程中显示：Saving…
+保存成功后显示：Saved at 18:32 2026/09/30
+保存失败时显示：Save failed. Retry.
+用户也可以随时点击Apply按钮进行立即保存。
+9、数据结构
+1、数据结构与保存方式
+Survey Builder 保存的数据至少包括：
+user_id；survey_id；updated_at；Survey 基础信息；Block；Block 顺序；Question；Question ID；Question Type；Question Name；Question Text；Question 顺序；Question 配置；Choice；Matrix Statement；Scale Point；删除状态等。
+Survey 的结构化配置以 JSON / JSONB 形式保存和传输。
+概念结构例如：
+{
+  "survey_id": "srv_xxxxx",
+  "blocks": [
+    {
+      "block_id": "blk_xxxxx",
+      "block_name": "Block 1",
+      "sort_order": 1,
+      "questions": [
+        {
+          "question_id": "q_xxxxx",
+          "question_name": "Q1",
+          "question_type": "multiple_choice",
+          "question_text": "请选择你喜欢的食物",
+          "sort_order": 1,
+          "required": true,
+          "config": {
+            "answer_type": "multiple",
+            "format": "list",
+            "layout": "vertical",
+            "min_selection": 1,
+            "max_selection": 2,
+            "choices": [
+              {
+                "choice_id": "ch_001",
+                "value": 1,
+                "label": "苹果"
+              },
+              {
+                "choice_id": "ch_002",
+                "value": 2,
+                "label": "橙子"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+具体数据库实现时，可以根据查询需求将 Survey、Block、Question 等核心对象拆分至独立数据表，并使用 JSON / JSONB 保存各 Question Type 特有配置；最终数据库表结构在 Database Design 模块中统一确定。
+不将 Builder 内容保存为 HTML 字符串；HTML 由前端根据结构化 Survey 数据动态渲染。
+2、 数据输入
+加载 Builder 时主要输入：current_user_id；survey_id。
+后端根据 survey_id 查询 Survey 的 Working Version、Block、Question 和相关配置，并确认当前用户拥有该 Survey 的编辑权限。
+保存时主要输入：user_id；survey_id；当前修改时间；Working Version 中的 Survey 结构和修改内容。
+Trash 查询额外使用：survey_id、is_deleted = 1
+3、 数据输出
+加载成功后向前端返回当前 Survey 的完整 Working Version，包括 Survey 基础信息、Block、Question、Question 配置、顺序及状态。
+保存成功后至少返回：survey_id；最新 updated_at；保存状态。
+前端根据返回结果更新顶部 Saved at... 信息。
+Response 数据不属于 Builder 模块；受访者回答的数据库结构和保存方式在 Response 模块中单独定义。
+10、异常状态
+问卷加载失败时显示：Failed to load survey. Please Retry.
+自动保存或手动保存失败时显示：Failed to save changes. Please Retry.
+删除失败时显示：Failed to delete question.
+Block 删除失败时使用对应的 Block 错误提示。
+恢复失败时显示：Failed to restore question.
+永久删除失败时显示：Failed to permanently delete question.
+网络断开且当前存在未保存修改时显示：Changes are not saved.
+Publish 失败由 Publish 模块负责处理。
+异常状态发生时原型图参考如下：
+1、页面内状态错误
+例如：Survey 加载失败；保存失败；网络未保存等。这类错误不需要弹出 Toast。
+问卷加载失败时，在 Builder 主编辑区域顶部中央显示：Failed to load survey. Please Retry.
+此时页面整体框架继续保留，包括：顶部导航；Survey 导航；左侧 Builder 导航；左侧 Edit Question 面板；Survey Header；底部操作栏。不得因为 Survey 加载失败而跳转到独立 Error Page。
+如果 Survey 内容没有成功加载，左侧显示：Please Select One Block/Question
+保存失败时，在原本 saved at... 的位置显示：Failed to save changes. Please Retry.；网络断开且存在未保存修改时显示：Changes are not saved.
+2、操作错误 Toast
+针对用户刚刚执行的局部操作，例如：删除；Restore；其他即时操作失败；使用顶部红色 Toast。
+Toast 位于页面顶部靠中央位置。使用：浅红 / 粉红背景；红色边框；左侧 Warning 图标；中间错误信息；右侧关闭 ×。
+例如 Question 删除失败：Failed to delete question. Please retry.
+Block 删除失败：Failed to delete block. Please retry.
+Question 恢复失败：Failed to restore question. Please retry.
+Block / Question 相关 Restore 根据实际操作对象显示对应文案。
+Toast 不阻断用户继续编辑页面。点击右侧 × 可以立即关闭。若用户不关闭，则在1min之后自动消失；
+Publish 失败不在 Builder 模块定义，由 Publish 模块负责处理。
+11、 V1 范围
+V1 实现 Block 新建与折叠；Question 新建、编辑、删除、恢复及永久删除；Multiple Choice、Text Entry、Text / Graphic、Matrix Table 四种 Question Type；Question 配置；Trash；页面内搜索；手动保存；10 秒无操作后的自动保存；Preview 和 Publish 入口；Working Version 管理。
+V1 不实现拖拽排序；Import from Library；图片及文件上传；高级 Question Type；预设 Likert 模板；完整删除日志；复杂版本历史；多人实时协作；Response 数据管理；具体 Publish 和 Preview 逻辑。
+上述未实现内容在对应独立模块中继续定义。
+Survey Flow Module
+1、模块目标
+Survey Flow 用于定义受访者实际填写 Survey 时，各个 Block 以及其他 Flow Element 的执行顺序、条件和行为。
+用户可以在 Flow 中：调整 Block 及其他 Element 的执行顺序；根据 Question Response 或其他变量设置 Branch；通过 Randomizer 随机执行不同的 Flow Element；设置 Embedded Variable；在流程中调用 AI；在指定位置提前结束 Survey。
+Flow 默认按照从上到下的顺序执行。对于包含 Child Element 的容器型 Element，例如 Branch 或 Randomizer，系统根据父 Element 的规则决定是否以及如何执行其 Child Elements。如果受访者正常执行完 Root Flow 中的所有 Element，则 Survey 自动正常结束，不要求必须在 Flow 最后添加 End of Survey。
+End of Survey 仅用于需要在某个指定位置提前终止 Survey 的情况。
+*UI Fidelity Requirement：本页面必须以提供的Flow原型图为唯一视觉设计基准。开发时应优先复现：Flow Tree 的连接线；节点位置和层级缩进；Element 的矩形外框；父子关系；Hover 时出现的插入线与 +；左侧 Edit Element 设置栏；顶部 Survey 状态区域；Trash / History；底部 Apply / Preview / Publish 操作栏。
+不得在没有明确需求的情况下自行增加永久显示的右侧 Element Toolbar、Card Dashboard、Floating Panel 或其他原型图中不存在的主要 UI 结构。
+2、页面整体布局
+原型图：
+Survey Flow 页面延续 Survey Builder 的整体框架。
+页面包括：1. 顶部全局导航区域；2. Survey 一级导航；3. Survey 内部纵向功能导航；4. 左侧 Edit Element 设置栏；5. 右侧 Flow Tree 主编辑区域；6. Flow 顶部状态区域；7. 底部操作栏。
+顶部一级导航包括：Survey、Distribution、Analysis、Report；
+当前 Flow 属于 Survey 模块，因此 Survey 显示为选中状态。
+页面最左侧设置 Survey 内部纵向导航，从上至下对应：Builder、Flow、Options
+当前位于 Flow 页面时，Flow 图标使用浅蓝色背景进行高亮。
+3、Flow Tree 主编辑区域
+右侧主界面使用纵向 Tree / Flow Structure 展示 Survey Flow。
+Root Level Element 从上到下按执行顺序排列。每一个 Element 使用独立矩形节点显示。节点左侧通过圆点和连接线表示执行关系。
+Branch、Randomizer 等允许包含 Child Element 的节点，应通过：缩进；水平连接线；纵向连接线；明确表示父子层级。不得仅依靠上下排列表示嵌套关系。
+1、Element 选择
+页面一次只能选中一个 Flow Element。点击某个 Element 后：该 Element 显示蓝色边框；左侧 Edit Element 面板切换为该 Element 对应的设置界面。
+不同 Element Type 显示不同设置。例如：Block → Block Option；Branch → Branch Option；Call AI → Call AI Option；Randomizer → Randomizer Option；Embedded Variable → Embedded Variable Option；End of Survey → End of Survey Option。选择新的 Element 后，前一个 Element 自动取消选中状态。
+2、添加 Flow Element
+Flow Element 不通过永久显示的工具栏添加。
+当鼠标悬停在两个可以插入 Element 的位置之间时：显示蓝色横向分隔线；同时在分隔线末端显示蓝色 + 图标。
+当鼠标离开该区域时：蓝色分隔线隐藏；+ 图标隐藏。因此插入提示仅在 Hover 状态下出现。点击 + 后显示 Element Type 下拉菜单。菜单包含：
+Block
+Branch
+Randomizer
+Embedded Variable
+Call AI
+End of Survey
+
+当前选中的菜单项使用：蓝色文字；蓝色边框 / 选中状态。
+选择 Element Type 后：在当前插入位置创建对应 Element；
+新 Element 自动成为当前选中 Element；左侧 Edit Element 自动切换到对应设置。
+3、Flow 顺序与拖拽
+V1 支持通过拖拽调整 Flow Element。
+用户可以：
+- 改变 Root Level Element 的执行顺序；
+- 改变同一 Parent 下 Child Element 的顺序；
+- 将允许嵌套的 Element 拖入 Branch、Randomizer 等容器；
+- 将 Child Element 从 Parent 中移回 Root Level；
+- 将 Child Element 移动至其他允许嵌套的 Parent。
+拖拽过程中必须保持 Flow 结构合法。
+以下操作不得允许：
+- 将 Element 拖入自身；
+- 将 Parent Element 拖入自己的 Descendant；
+- 将 Child Element 放入不支持 Child 的 Element；
+- 产生循环引用。
+拖拽完成后立即更新前端 Flow Tree。实际持久化按照 Autosave / Apply 规则处理。
+4、Flow Element 类型 
+1、Block Element 
+Block Element
+选择 Block Element 后，左侧显示：
+Edit Element、Block Option、Choose Block下拉框。
+Choose Block 的选项来自当前 Survey Builder 中已经创建且未删除的 Block。
+Flow Tree 中 Block Element 显示：Show {block_name}  ({question_num} questions)
+2、Branch Element
+Branch 用于根据一个或多个条件决定是否进入对应的后续流程。其Branch Option原型图如下图所示：
+选择 Branch 后，左侧显示：Edit Element、Branch Option ；并提供以下可操作项：
+Branch Name；
+Condition Group 数量；
+每个 Condition Group 的具体条件；
+Delete Element。
+1、Branch Name
+Branch Name 用于识别当前 Branch 配置。 例如 ： branch1（UI 使用普通文本输入框。 ）
+2、Condition Group 数量 
+Branch 设置中使用 Stepper 控件控制 Condition Group 数量： + 用于增加一个 Condition Group；− 用于减少一个 Condition Group。
+Condition Group 按顺序自动编号： Condition Group 1、Condition Group 2、Condition Group 3…
+Condition Group 数量变化时，不需要点击 Apply 才更新页面。 变化应立即反映在： 左侧 Branch 设置栏；以及右侧 Flow Tree。
+3、Condition Group 与右侧 Branch Element 的关系 
+每一个 Condition Group 对应右侧 Flow Tree 中的一条 Branch 条件路径。
+因此增加 Condition Group 时，右侧实时生成对应 Branch Element / Branch Path。减少 Condition Group 时，右侧实时删除对应的 Branch Element / Branch Path。例如 Condition Group 数量由 2 增加到 3；右侧 Flow Tree 同步增加第三条 Branch 条件路径。
+这里的 UI 变化属于前端实时编辑状态。实际保存仍由 Autosave 或 Apply 完成。
+4、单条 Branch Condition 
+每条 Condition 使用三段式横向结构： 包括：[ Question / Variable ▼ ][ Operator ▼ ][ Value ▼ ]；V1 Operator 至少支持： 等于＝、不等于≠，后续可以扩展其他内容。 
+5、Condition 内的 AND / OR 
+同一个 Condition Group 内可以包含多条 Condition。
+相邻 Condition 之间提供逻辑关系选择：and 或 or；AND / OR 必须作为结构化数据保存，不保存为仅用于显示的字符串。 
+6、Add Match 
+每个 Condition Group 底部显示：+Match;用于向当前 Condition Group 增加一条 Condition。
+新增后生成新的：[ Question / Variable ▼ ][ Operator ▼ ][ Value ▼ ]选择结构。
+ 非第一条 Condition 可显示 Delete 图标，用于移除当前 Condition。Condition Group 至少保留一条 Condition。
+7、Condition Group 之间的关系 
+不同 Condition Group 之间同样提供： +Match；及 AND / OR 逻辑配置。从而可以表达复杂逻辑。逻辑关系应以结构化形式保存，不应只保存最终生成的条件字符串。 
+8、Branch 在 Flow Tree 中的显示
+Branch Element 在 Flow Tree 中显示：Branch Name；以及能够快速识别条件的摘要。简单条件可以显示：Branch 1  if Question_1 = 大学卒業 || Question_1 = 大学院修了；如果条件过长，则截断显示 。不得在 Flow Tree 中完整展开非常复杂的条件表达式。完整配置通过选中对应 Branch 后在左侧查看。
+3、Randomizer Element
+Randomizer 用于从其包含的多个 Flow Element 中随机选择指定数量，并执行被选中的 Element。每个 respondent 只会随机看到其中一个 Block。因此该设置不称为“Number of Random Questions”，而定义为：Number of Elements to Present，使用数字选择器设置。
+V1 UI 最大允许选择 5 个 Element；该限制仅属于当前产品界面限制，数据库字段使用整数保存，不设置数据库层面的固定最大值。
+Number of Elements to Present 不得大于 Randomizer 内实际存在的 Element 数量。
+Randomizer 下方允许加入可被随机化的 Element；V1 至少支持 Block 和 Branch。
+Evenly Present Elements
+Randomizer 提供：Evenly Present Elements
+开启后，系统应尽量保证各随机 Element 在全部 respondents 中被分配的次数接近，而不是完全独立随机。
+例如两个实验条件 A / B，在 100 位受访者中应尽量接近：A ≈ 50；B ≈ 50；而不是完全随机后可能出现明显不平衡。V1 只需要实现基础均衡分配；更复杂的 Count 手工调整功能暂不实现。
+4、Embedded Variable Element
+V1 保留一个简化版 Embedded Data 功能，用于保存不属于普通 Question Response 的 Survey-level / Response-level 变量。例如：condition = treatment；transaction_id = PS_12345；ai_result = positive
+每个 Embedded Data Element 至少设置：Variable Name；Value
+例如：Variable Name: condition；Value: treatment
+执行到该 Element 时，将该值写入当前 respondent 的 Response Session。Embedded Data 可以用于后续 Branch Logic。
+例如：IF condition = treatment    → Block Treatment
+未来 PureSpectrum 的 transaction_id、实验条件、URL Parameter、AI 计算结果等均可以通过这一机制保存。
+V1 暂不实现 Qualtrics Embedded Data 的全部高级功能；仅实现基础 Key–Value Variable。
+为了让界面对普通用户更容易理解，UI 名称可以显示：Variable；内部数据模型仍可命名为：embedded_data
+5、Call AI Element
+Call AI 用于在 Survey Flow 中启动一个 AI Conversation。
+一个 Call AI Element 对应一次独立的 AI Conversation Instance。
+选择 Call AI 后，左侧显示如原型图所示：
+包括：
+Edit Element
+Call AI Option
+Agent Name
+Input Source
+Conversation Turns
+Role Instruction / System Prompt
+Context
+User Message Template
+Temperature
+End Condition
+Delete Element
+1、Agent Name 
+Agent Name 用于标识当前 AI Conversation。 例如：Conversation_1；主要用于：Flow Element 识别；Conversation 数据保存；后续数据分析。同一 Survey 中应可以唯一识别不同 Call AI Element。
+2、Input Source 
+Input Source 用于指定 AI Conversation 所使用的主要输入来源。例如：Question_1；V1 可以通过下拉菜单选择此前已经执行并产生数据的 Question。
+其他多个 Question Response 或 Embedded Variable 可以通过 Context 引用。
+3、Conversation Turns 
+Conversation Turns 使用 Stepper，对应max_turns。
+Turn 定义为 ：Participant Message→AI Response；这一完整往返算作：1 turn。AI Opening Message 不计入 Turn。
+例如： AI Opening Message→Participant Message 1→AI Response 1= Turn 1；Participant Message 2→AI Response 2= Turn 2；Participant Message 3→AI Response 3= Turn 3；→Conversation End
+4、Role Instruction/system prompt
+该字段用于定义 AI 的：Role；Behavior；Constraints；Overall instruction。
+5、Context 
+Context 用于将当前 Participant 已经产生的 Survey Data 提供给 AI。可包括：Previous Question Responses；Embedded Variable；当前 Response 下其他允许的数据。
+例如用{#Question_1#}表示问卷中Question_1中写入的值（动态变量 Placeholder ）。Flow 实际运行时，将 Placeholder 替换为当前 Respondent 的真实回答。
+Context 只能引用当前 Flow 执行位置之前已经产生的数据。不得引用尚未执行的未来 Question Response。
+6、User Message Template 
+User Message Template 定义 AI 在每一轮 Conversation 中具体需要执行的任务 。
+三个 Prompt 相关部分职责分别为：Role Instruction / System Prompt→ AI 是谁，以及必须遵守什么规则；Context→ AI 当前拥有哪些 Participant 信息；User Message Template→ 当前这一轮要求 AI 做什么
+三者必须分别保存，不混合为一个字段。
+7、Temperature 
+Temperature 使用 Stepper： 允许范围0.0~1.0；默认步进：0.1；到达 0 或 1 后不得继续减少或增加。 
+8、End Condition 
+V1 的 End Condition 暂时只支持： Max Turns Reached；即当：turn_count >= max_turns时，结束当前 AI Conversation。UI 保留下拉框，是为了以后扩展其他条件，例如：AI End Signal；Participant Exit；Condition Met；Other End Rules。但上述条件不属于当前 V1。
+9、Call AI 的执行流程
+当 Survey Flow 执行到 Call AI Element 时：
+进入 Call AI
+↓
+读取 Agent Configuration
+↓
+读取 System Prompt / Role Instruction
+↓
+解析 Context 中的动态变量
+↓
+读取 User Message Template
+↓
+创建新的 AI Conversation
+↓
+发送 Initial Request
+↓
+AI 返回 Opening Message
+↓
+展示给 Participant
+↓
+Participant 输入回答
+↓
+将以下内容发送给 AI：
+Context
++ Conversation History
++ Participant Message
++ User Message Template
+↓
+AI 返回 Response
+↓
+turn_count + 1
+↓
+判断是否达到 max_turns
+├─ No → 继续下一轮
+└─ Yes → 结束 Conversation
+↓
+保存完整 Conversation
+↓
+Flow 继续执行下一个 Element
+10、Call AI 在 Flow Tree 中的显示 
+Flow Tree 不显示完整 AI Configuration。Call AI Element 只显示关键摘要，例如：Call AI、Agent: Conversation_1、System Prompt: あなたは、学習意欲に関する...Max turns: 3
+其中 System Prompt 只显示前若干字符。超过允许显示长度后截断。
+Flow Tree 中不完整显示：- Context；- User Message Template；- Temperature；- 完整 System Prompt。完整信息只在左侧 Call AI Option 中显示和编辑。
+11、AI Conversation 数据保存
+每次进入 Call AI Element 后创建一个独立 Conversation Record。一个 Conversation 作为一个整体保存，其中包含多个 Turn。建议使用 JSON / PostgreSQL JSONB 保存完整 Conversation。字段命名为：ai_conversation_json；实际保存的数据并不是一条单独的 AI Response，而是完整 Conversation。
+概念性结构例如：
+{
+  "agent_name": "Conversation_1",
+  "max_turns": 3,
+  "turns": [
+    {
+      "turn": 0,
+      "role": "assistant",
+      "content": "Opening message"
+    },
+    {
+      "turn": 1,
+      "participant": "Participant response",
+      "assistant": "AI response"
+    },
+    {
+      "turn": 2,
+      "participant": "Participant response",
+      "assistant": "AI response"
+    }
+  ],
+  "end_reason": "max_turns_reached"
+}
+其中：turn = 0 表示 Opening Message，不计入正式 Turn 数。
+Conversation 至少关联：
+survey_id
+response_id
+flow_element_id
+agent_name
+以便后续确定这段 AI Conversation 属于哪一份 Survey Response 以及哪一个 Call AI Element。
+6、End of Survey Element
+End of Survey 表示提前终止当前 Survey Flow。
+当执行至该 Element 时：停止执行后续 Flow Element；进入 Survey 结束流程。正常执行完 Root Flow 时无需额外放置 End of Survey，因此该 Element 主要用于 Branch 等特殊路径中的提前结束。
+Flow Tree 中 End Survey 按照原型使用红色 / 橙红色边框及文字，以与普通 Flow Element 区分。
+5、Delete Element 
+所有可删除的 Flow Element 在左侧 Edit Element 底部提供：Delete Element按钮。
+按钮按照原型使用浅红色背景及红色边框。删除后 Element 进入 Flow Trash，而不是立即永久删除。如果被删除 Element 包含 Child Element，其 Parent / Child 关系应继续保留，以支持后续 Restore。
+6、Trash 
+Flow 页面顶部提供：Trash按钮。Flow Trash 与 Builder Question Trash 分开管理。Flow Trash 显示已经删除的 Flow Element。对于包含 Child Element 的结构，例如 Branch，应保留删除前的层级关系。
+每个可恢复项目提供：Restore操作。Restore 后尽量恢复：原 Parent；原层级；原 sort_order；原 Flow Position。
+具体 Trash UI 以对应原型图为准。原型图如下：
+7、History 
+Flow 页面顶部提供：History按钮。点击后显示 Flow Version History。
+每条记录至少显示：- 保存时间；- Element 数量；- Version Status；- Restore。
+Version Status 至少包括：PublishedAppliedAutosave
+颜色：Published：绿色；Applied：蓝色；Autosave：灰色。
+Restore 某个 Flow Version 后，该版本成为新的 Working Version。Restore 不直接修改当前 Published Version。
+具体 History UI 以对应原型图为准。原型图如下：
+8. 顶部状态区域 
+Flow 主区域顶部显示：Survey Name（不可修改）；最近保存时间；Search；Trash；History。Survey Name 和保存状态的规则与 Builder 保持一致。
+Search 用于查找当前 Flow 中的 Element。V1 搜索至少可以覆盖：Element Name；Block Name；Branch Name；Call AI Agent Name。具体更细粒度搜索范围可后续扩展。
+9、Autosave 与 Apply
+Flow 的编辑内容属于 Survey Working Version。修改 Element：新增；删除；拖拽；修改配置；修改 Branch Condition；修改 Call AI Config；均立即更新前端 Working State。Autosave 规则与 Builder 保持一致。
+用户也可以点击底部：Apply，立即保存当前 Flow Working Version。Apply 不等于 Publish。
+10、底部操作栏
+Flow 页面底部操作栏与 Builder 保持一致。右侧显示：Apply、Preview、Publish
+中央显示折叠 / 展开按钮。点击中央箭头可以折叠底部操作栏。再次点击恢复。
+Preview 的具体运行规则由 Preview 模块定义。Publish 的具体运行规则由 Publish 模块定义。
+11、Working Version 与 Published Version
+Flow 编辑的始终是：Working Version
+Flow 中新增或修改 Element 不立即影响正在公开运行的 Survey。
+12、V1 支持的 Flow Element
+右侧工具栏显示所有计划中的 Flow Element，但 V1 只正式实现以下功能：Block；Branch；Randomizer；Embedded Data / Variable；End of Survey；Call AI。
+以下 Element 暂不在 V1 实现：Web Service；Text Sentiment – Topic；Group；Authenticator；Reference Survey；Table of Contents；Experience Agent。后续版本可逐步增加。 
+13、异常状态
+Flow 加载失败：Failed to load survey flow. Please Retry.
+保存失败：Failed to save changes. Please Retry.
+删除 Element 失败：Failed to delete element. Please retry.
+Restore 失败：Failed to restore element. Please retry.
+Call AI Configuration 保存失败：按照统一保存失败状态处理。
+网络断开且存在未保存修改：Changes are not saved.
+页面加载类错误在 Flow 主编辑区域内显示。删除、Restore 等即时操作错误使用与 Builder 相同的顶部红色 Toast。错误发生时不得破坏 Flow 页面整体结构。
+Survey Preview Module
+1、模块目标
+Preview 用于模拟受访者实际填写 Survey 时的页面和执行流程，使问卷创建者可以在 Publish 前检查 Question 显示、Block 顺序、Flow Logic、Branch、Randomizer、Call AI、End of Survey 等行为。
+Preview 使用当前 Survey 的 Working Version，不使用最近一次 Published Version，因此 Builder、Flow 或 Options 中尚未 Publish 的修改也可以在 Preview 中检查。
+Preview 不产生正式 Survey Response，不计入 response_count，也不进入正式 Data & Analysis 结果。
+2、Preview 启动
+可以。下面我把刚才关于 Preview 的建议压缩成一版比较适合直接放进需求文档的 PRD，不切得太碎。
+3、Preview 模块
+1. 模块目标
+Preview 用于模拟受访者实际填写 Survey 时的页面和执行流程，使问卷创建者可以在 Publish 前检查 Question 显示、Block 顺序、Flow Logic、Branch、Randomizer、Call AI、End of Survey 等行为。
+Preview 使用当前 Survey 的 Working Version，不使用最近一次 Published Version，因此 Builder、Flow 或 Options 中尚未 Publish 的修改也可以在 Preview 中检查。
+Preview 不产生正式 Survey Response，不计入 response_count，也不进入正式 Data & Analysis 结果。
+2. Preview 启动方式与 URL
+Builder 和 Flow 页面底部均提供 Preview 按钮。
+点击 Preview 后，在新的浏览器标签页或窗口中打开独立 Preview 页面。
+Preview URL 可定义为：
+/survey/{survey_id}/preview
+例如：
+/survey/srv_123456/preview
+Preview 页面不显示 Builder、Flow 等编辑界面，而使用与正式受访者填写 Survey 相同的 Response UI。
+Preview 属于内部功能，访问 Preview URL 时需要验证当前登录用户是否拥有该 Survey 的访问或编辑权限。仅知道 survey_id 不应允许未授权用户进入 Preview。
+正式 Published Survey 使用独立的公开访问 URL，不与 Preview URL 共用。
+3、Preview 使用的版本 
+Preview 默认读取当前 Survey 的：Working Version；而不是：Published Version
+因此：用户无需 Publish 即可检查当前修改结果。正式公开 Survey 则继续读取：Published Version
+为了避免用户刚修改内容后立即点击 Preview 时读取到旧数据，点击 Preview 后首先检查当前页面是否存在未持久化修改。如果存在未保存修改：
+点击 Preview
+↓
+检查 dirty state
+↓
+立即保存 Working Version
+↓
+保存成功
+↓
+打开 Preview
+如果保存失败，则不启动 Preview，并显示：
+Failed to save changes. Please Retry.
+如果当前没有未保存修改，则直接打开 Preview。
+4、Preview 执行规则 
+Preview 启动后，系统首先判断当前 Survey 是否存在有效 Survey Flow。
+有效 Flow
+如果存在有效 Flow，则严格按照 Flow 定义执行。
+例如：
+Show Block 1
+↓
+Call AI
+↓
+Branch
+├── 条件满足 → Show Block 2
+└── 条件不满足 → Skip
+↓
+End Survey
+Preview 中应真实执行 Flow Logic，包括：Block；Branch；Randomizer；Embedded Variable；Call AI；End of Survey。
+如果 Survey 已经存在 Flow，则没有被 Flow 引用的 Block 不自动补充显示。也就是说，一旦使用 Flow，Flow 即成为 Survey 执行顺序的唯一来源。 
+无有效 Flow
+如果当前 Survey 没有配置有效 Flow，则按照 Builder 中的默认顺序执行。 默认执行顺序为：
+Block sort_order
+↓
+Block 内 Question sort_order
+因此 Survey Flow 不是 Preview 的必要条件；普通线性问卷只使用 Builder 也可以正常 Preview。 
+5. Preview Session 与数据隔离
+每次打开 Preview 时创建独立的 Preview Session，用于保存本次 Preview 中产生的临时回答、Flow 状态、Branch 判断结果、Embedded Variable 以及 AI Conversation 状态。
+Preview 数据必须与正式 Response 数据区分。可以通过独立的：preview_session_id管理 Preview，也可以在统一 Response 数据结构中增加：response_type例如：formal、preview、test。无论采用哪种方式，都必须保证：response_count只统计正式并有效提交的数据，不统计 Preview。Preview 中产生的回答主要用于当前 Session 内执行 Flow，不进入正式 Data & Analysis。
+关闭 Preview 后，Preview Session 是否立即删除或作为调试日志短期保存，可根据后续实现决定，但必须与正式 Respondent 数据明确隔离。
+6. Preview Mode UI
+Preview 页面需要明确告诉用户当前处于 Preview 状态，避免与正式 Survey 页面混淆。页面顶部可以显示轻量提示区域，例如：Preview Mode
+This is a preview. Responses will not be recorded as formal survey data.
+同时提供：Exit Preview用于关闭 Preview 并返回编辑页面。
+Preview 页面还应提供：Restart Preview
+Restart 后：清空当前 Preview Session 中已经填写的回答；清空当前 Flow 执行位置；重新计算 Branch、Randomizer、Embedded Variable 等状态；重新从 Survey 开始执行。
+Restart 主要用于开发者反复测试不同 Answer Path。V1 Preview 统一从 Survey 开头开始，不实现：Preview from this Question或：Preview from this Block这类局部 Preview 功能。
+7. Call AI 在 Preview 中的处理
+如果 Flow 中包含 Call AI，Preview 中应真实执行 Call AI，而不是使用静态占位结果。这样才能检查：System Prompt；Context；User Message Template；Conversation Turns；AI Opening Message；多轮 Conversation；End Condition；以及 Call AI 之后的 Flow 行为。
+Preview 中产生的 AI Conversation 和 AI Run 必须标记为 Preview 数据，不能混入正式 Respondent 的 AI Conversation。
+例如可以通过：response_type = preview或：preview_session_id进行关联。
+如果系统记录 T_ai_conversation、T_ai_message、T_ai_run，则这些 Preview AI 记录也必须能够与正式运行数据区分。
+8. Preview 中的 Flow 行为
+Preview 应尽可能与正式 Survey 使用相同的 Flow Execution Engine，以避免出现“Preview 正常但正式 Survey 行为不同”的情况。Branch 根据 Preview Session 中已经填写的 Question Response 或 Embedded Variable 实时判断条件。Randomizer 按正式逻辑执行，但 Preview Restart 后允许重新产生新的随机结果。End of Survey 被执行时，Preview 立即进入 Survey End 状态，不再执行后续 Element。如果 Root Flow 正常全部执行完毕，则 Survey 自动结束，不要求必须存在 End of Survey Element。如果没有 Flow，则 Builder 中全部 Block 按顺序执行完成后正常结束。
+9. 异常状态
+Preview 页面加载失败时显示：Failed to load survey preview. Please Retry.
+如果在打开 Preview 前保存 Working Version 失败，则 Preview 不启动，并显示：Failed to save changes. Please Retry.
+Flow 执行过程中出现异常时，应尽量保留当前 Preview Session，不立即清空用户已经填写的内容。Call AI 调用失败时按照 Call AI 模块定义的失败处理规则执行。Preview 页面本身的错误不得写入正式 Response 数据。
+10. V1 范围
+V1 Preview 实现：从 Builder 和 Flow 页面启动 Preview；新标签页 / Window 打开；Preview 使用 Working Version；启动前自动保存未持久化修改；存在 Flow 时按照 Flow 执行；不存在 Flow 时按照 Builder 默认顺序执行；Branch；Randomizer；Embedded Variable；Call AI；End of Survey；Preview Session；Preview 数据与正式 Response 数据隔离；Preview Mode 提示；Exit Preview；Restart Preview；
+Preview 不计入 response_count。
+V1 暂不实现从指定 Block 或 Question 开始 Preview、多人协作 Preview、Preview 历史记录以及公开分享 Preview Link 等功能。
+Survey Option Module
+1. 模块目标
+Survey Options 用于配置 Survey 的基础信息、受访者作答行为、问卷可用性、安全设置以及 AI 相关配置；V1 不实现 Look & Feel 模块中的品牌主题、Logo、字体、颜色等商业化外观定制功能，公开问卷统一使用系统默认样式。
+Survey Options 的大部分配置统一保存在 T_survey.survey_config 中；survey_config 使用 JSON / JSONB 结构保存，以避免随着设置项目增加不断扩展 T_survey 的数据库字段。需要高频查询的核心字段，例如 survey_id、survey_name、status、created_at、updated_at 等仍作为 T_survey 的独立字段保存。
+原型图：
+详情页面最上方还是展示问卷名称，但是不能更改。同时右侧的搜索栏可以搜索操作名称。模糊查询，跳转到第一个返回的结果处。如果有多个返回的查询结果，则在搜索栏的下拉框中展示。
+2. Survey Config 总体结构
+T_survey 中增加 survey_config 字段，用于保存 General、Responses、Availability、Security 和 AI 等配置。概念结构如下：
+{
+  "general": {
+    "interface_language": "ja",
+    "display_name": "AI Persuasion Study",
+    "survey_description": "A study about attitudes toward AI.",
+    "show_question_numbers": false
+  },
+  "responses": {
+    "allow_back_button": true,
+    "allow_finish_later": true,
+    "incomplete_response": {
+      "action": "record",
+      "timeout_days": 7
+    }
+  },
+  "availability": {
+    "open_at": null,
+    "close_at": null
+  },
+  "security": {
+    "allowed_referrer": {
+      "enabled": false,
+      "domains": []
+    },
+    "prevent_multiple_submissions": true,
+    "bot_detection_enabled": false,
+    "prevent_search_indexing": true,
+    "anonymize_responses": true
+  },
+  "ai": {
+    "enabled": true,
+    "config_id": "aicfg_001"
+  }
+}
+访问公开问卷时，后端根据 survey_id 读取 T_survey 和 survey_config，并根据其中配置决定问卷是否可访问、页面语言、作答行为、安全限制以及 AI 配置。
+3. General 设置
+General 用于保存 Survey 的基础展示信息。
+Interface Language
+V1 支持三种系统界面语言：
+English
+Japanese
+Simplified Chinese
+数据库内部建议保存：
+en
+ja
+zh-CN
+该设置只控制系统生成的界面文字，例如 Next、Back、Submit、错误提示等；不会自动翻译用户自己编写的 Question Text、Choice、Block Name 或其他 Survey 内容。制作者使用什么语言编写问卷，受访者就看到什么语言的问卷内容。
+字段建议使用 interface_language，避免未来增加真正的 Survey Translation 功能时与其混淆。
+Display Name
+display_name 表示 Survey 对外显示的标题；可以用于浏览器标签页标题、公开页面标题以及未来可能存在的分享信息。
+该字段可以与内部使用的 survey_name 不同；survey_name 主要用于项目列表和研究者内部管理，display_name 用于 respondent 端展示。
+Survey Description
+survey_description 用于保存 Survey 的简短说明；可用于网页描述、分享预览或公开页面的基础信息。
+V1 不支持 Logo、Open Graph Image 或其他品牌展示内容。
+Question Numbers
+通过 show_question_numbers 控制 respondent 是否能够看到 Question Number。
+show_question_numbers = true / false
+关闭时，Builder 内部的 question_name 和 Question ID 仍然正常存在，只是不在公开问卷页面显示题号；开启后可以显示类似 Q1、Q2 等编号。
+4. Responses 设置
+Responses 用于控制 respondent 在一次 Survey Session 中的作答行为。
+Back Button
+通过：
+allow_back_button = true / false
+控制 respondent 是否可以返回已经访问过的上一页并修改回答。
+如果 Survey Flow 中存在 Randomizer、Branch 或其他状态性流程元素，respondent 返回上一页时不能重新计算已完成的随机分配或流程结果；Randomizer 分配结果等运行状态应保存在当前 Response Session 中。
+Allow Respondents to Finish Later
+通过：
+allow_finish_later = true / false
+控制 respondent 是否可以中断当前作答，并在之后继续完成 Survey。
+开启后，系统需要保存当前 response_id、Survey 执行位置、已经提交的回答、Flow Session 状态以及最后活动时间等信息；具体 Resume Token、Session 恢复和 URL 设计由 Response Session 模块单独定义。
+Incomplete Survey Responses
+用于定义 respondent 未完成问卷后，系统如何处理该 Response。
+配置包括：
+action = record / delete
+timeout_days = number
+例如：
+action = record
+timeout_days = 7
+表示 respondent 最后一次活动超过 7 天仍未完成 Survey 时，将其作为 incomplete response 保存。
+如果设置：
+action = delete
+则在超过 timeout 后删除或清理未完成 Response；具体删除策略和数据保留方式由 Response 模块定义。
+Custom Error Messages
+V1 不实现自定义 Error Message Library；必答题、输入格式错误等情况统一使用系统默认错误提示，并根据 interface_language 自动显示对应语言。
+未来可增加 Survey 级自定义错误信息设置。
+5. Survey Availability
+Survey Availability 用于控制 Survey 的开放状态和可访问时间。
+Survey 当前状态 status 仍保存在 T_survey 独立字段中，建议至少支持：
+draft
+published
+closed
+其中 draft 表示尚未发布；published 表示已经发布并可以接收回答；closed 表示已经停止接收回答。
+survey_config.availability 保存：
+open_at
+close_at
+两个字段均允许为空。
+例如：
+open_at = 2026-10-01 09:00
+close_at = 2026-10-15 23:59
+公开 Survey 被访问时，系统首先判断 status 和时间范围；如果尚未到达 open_at，返回默认“Survey is not available yet”信息；如果已经超过 close_at，返回默认“This survey is closed”信息；如果 Survey 当前不是 published，则不允许正常进入问卷。
+V1 不提供复杂的 Automatic Survey Closure 界面和自定义 inactive message；达到 close_at 后由访问控制自动阻止新的作答即可。
+6. Security 设置
+Security 用于定义 Survey 的基础访问限制和隐私设置。
+Allowed Referrer
+用于限制或检查 Survey 的来源网站。
+配置：
+{
+  "enabled": true,
+  "domains": [
+    "example.com"
+  ]
+}
+该功能只能作为辅助来源检查，不能作为强身份认证；HTTP Referrer 可能不存在、被浏览器裁剪或被绕过。
+如果未来与 PureSpectrum 等 Panel 平台集成，应主要通过 transaction_id、redirect、callback 等机制识别和验证 respondent，Allowed Referrer 仅作为附加限制。
+Prevent Multiple Submissions
+通过：
+prevent_multiple_submissions = true / false
+控制是否启用基础重复提交防护。
+V1 可以在 respondent 完成 Survey 后向浏览器写入 completion cookie；之后再次使用相同浏览器访问时检测该 cookie，并阻止重复提交。
+该功能不能保证绝对防止重复作答；用户可以通过清除 Cookie、切换浏览器、切换设备等方式绕过。更严格的一人一次机制需要使用 unique token、Panel transaction ID、Authenticator 等方式，后续单独实现。
+Bot Detection
+保留：
+bot_detection_enabled
+配置项；V1 是否实际实现具体 Bot Detection 机制可根据开发进度决定。
+V1 不自行设计复杂 AI Bot Detection 模型；如果暂不实现，则 UI 中可以隐藏该设置或标记为 Future Feature。
+Prevent Search Indexing
+通过：
+prevent_search_indexing = true
+控制公开 Survey 是否允许搜索引擎索引。
+V1 默认开启防索引；Survey 页面可通过 robots meta information 或响应头告诉搜索引擎不要收录 Survey。
+Anonymous Responses
+通过：
+anonymize_responses = true / false
+控制是否启用匿名回答模式。
+V1 在 Survey Options 中只提供该设置入口；IP Address、User-Agent、transaction_id、Panel ID、Session Log、账号关联信息等哪些内容属于 identifying information，以及匿名模式下应该保存或删除哪些字段，需要在独立的 Response Privacy / Anonymization 模块中进一步定义。
+V1 不在 Survey Options 中直接决定具体匿名化实现。
+暂不实现的 Security 功能
+V1 暂不实现 Invitation Only、Password Protection、Authenticator、File Upload Access 等高级安全功能。
+7. AI 设置
+Survey Options 中提供 Survey 级 AI 设置；AI 的完整运行参数不直接全部保存进 survey_config，survey_config.ai 只保存 AI 是否启用以及对应的 AI Configuration ID。
+例如：
+{
+  "ai": {
+    "enabled": true,
+    "config_id": "aicfg_001"
+  }
+}
+完整 AI 配置保存在独立的 T_ai_config 中。
+这样 Survey Flow 中的 Call AI Element、Question AI 功能以及其他 AI 功能都可以统一引用同一份 ai_config_id，避免在不同模块中重复保存参数。
+8. AI Configuration
+T_ai_config 用于保存 AI 的完整运行配置。
+建议至少包含：
+ai_config_id
+config_name
+config_version
+provider
+model
+system_prompt
+generation_config
+conversation_config
+runtime_config
+output_config
+logging_config
+created_at
+updated_at
+基础配置
+包括：
+provider
+model
+system_prompt
+provider 表示 AI Provider，例如 OpenAI；model 表示实际使用的模型；system_prompt 用于定义 AI 的角色、任务和基本行为。
+V1 可以限制用户只能从系统允许的 Model 下拉框中选择，避免手动输入不存在的 Model Name；如果 V1 只使用一个固定模型，也可以隐藏 Model 选择，只由平台默认配置决定。
+Generation Config
+用于保存生成相关参数，例如：
+{
+  "temperature": 0.7,
+  "top_p": 1.0,
+  "max_output_tokens": 800,
+  "seed": null
+}
+V1 UI 不需要全部展示；基础设置中可以只提供 temperature 和 max_output_tokens，其余参数放入 Advanced Settings 或使用系统默认值。
+Conversation Config
+Conversation Config 用于控制 AI 多轮对话行为。
+{
+  "max_turns": 5,
+  "include_history": true,
+  "history_window": 10
+}
+max_turns 在 AI Config 中统一定义，不再在 Survey Flow 的 Call AI Element 中重复设置。
+一轮对话定义为：
+Respondent message
++
+AI response
+V1 可以将 max_turns 的界面最大值限制为 5；该限制仅属于当前产品限制，数据库本身不写死最大值。
+include_history 用于控制调用 AI 时是否携带此前对话记录；history_window 表示最多携带最近多少条历史 Message。
+Survey Flow 中的 Call AI Element 只负责决定“何时调用 AI”和“输入来自哪里”，具体最大对话轮数由该 Element 引用的 ai_config_id 决定。
+Runtime Config
+用于控制 API 调用行为。
+{
+  "timeout_seconds": 30,
+  "max_retries": 2,
+  "failure_behavior": "skip"
+}
+timeout_seconds 表示单次 AI 请求最大等待时间；max_retries 表示请求失败后的最大重试次数；failure_behavior 表示多次失败后的处理方式。
+V1 可支持：
+skip
+show_error
+use_default_value
+end_survey
+具体使用哪些选项可以根据实际开发范围简化。
+Output Config
+用于规定 AI 输出格式和输出变量。
+{
+  "response_format": "text",
+  "output_variable": "ai_response"
+}
+response_format V1 可支持：
+text
+json
+output_variable 表示 AI Output 在 Survey Flow 中保存为什么变量；后续 Branch 可以通过 Embedded Data / Variable 使用该结果。
+Logging Config
+用于控制 AI 调用记录。
+{
+  "save_prompt": true,
+  "save_response": true,
+  "save_token_usage": true,
+  "save_latency": true,
+  "save_error": true
+}
+AI 的实际运行记录保存在独立的 T_ai_run 中，而不是 Survey Config 中。
+建议记录：
+run_id
+response_id
+ai_config_id
+config_version
+provider
+model
+input
+output
+input_tokens
+output_tokens
+latency_ms
+status
+error_message
+created_at
+即使 V1 不允许用户手动选择不同 Model，每一次实际调用仍必须记录真实使用的 Model，以保证后续研究分析和结果复现。
+9. AI Config Version
+AI Config 需要保存版本号：
+config_version
+已经产生正式 Response 后，不建议直接覆盖旧 AI Config；修改 System Prompt、Model、Temperature、Max Turns 等可能影响研究结果的参数时，应创建新的 Config Version。
+例如：
+aicfg_001 version 1
+aicfg_001 version 2
+这样可以明确不同 respondent 实际使用的是哪一版 AI Configuration。
+具体 Publish 时如何冻结 AI Config Version，可以在 Publish / Version Management 模块中继续定义。
+10. API Key
+API Key 不属于单个 Survey，不存放在 survey_config 或 T_ai_config 中。
+如果 V1 平台统一使用一个 OpenAI API Key，则 API Key 直接保存在服务器环境变量或 Secret 中：
+OPENAI_API_KEY=...
+公开 Survey 页面和前端代码永远不能接触完整 API Key。
+AI 调用流程为：
+Respondent Browser
+→ Survey Backend
+→ AI Provider API
+如果未来允许不同用户使用自己的 API Key，则建立独立的账户级或 Workspace 级 Credentials 表，例如：
+T_ai_credentials
+credential_id
+user_id / workspace_id
+provider
+encrypted_api_key
+created_at
+updated_at
+API Key 必须在 Backend 加密后保存；加密使用的 Master Key 不能与密文保存在同一数据库中；前端之后只能显示掩码，例如：
+••••••••1234
+不能重新获取完整 Key。
+11. Post-Survey
+V1 不实现 Post-Survey Email、Thank-you Email、Link Revisit Email 等邮件功能。
+Survey 正常执行完整个 Flow 后进入默认 Survey End Page；Branch 中的提前结束由 Flow 的 End of Survey Element 处理。
+默认结束页的具体内容、Redirect、PureSpectrum Callback 等由 Survey End / Panel Integration 模块单独定义。
+12. 数据输入
+Survey Options 页面加载时主要输入：
+current_user_id
+survey_id
+系统根据 survey_id 查询 T_survey.survey_config，并确认当前用户拥有该 Survey 的编辑权限。
+如果 Survey 使用 AI，则根据：
+survey_config.ai.config_id
+进一步读取对应 T_ai_config。
+13. 数据输出
+用户修改 Survey Options 后，将新的 survey_config 写回 T_survey；同时更新：
+updated_at
+updated_by
+如果修改 AI Configuration，则更新或创建对应 T_ai_config 版本。
+Survey Options 保存成功后返回最新配置和更新时间；前端更新保存状态。
+14. 保存方式
+Survey Options 与 Builder 一样支持自动保存和手动保存。
+用户修改配置后先更新前端状态；停止操作一段时间后触发 autosave；也可以点击 Save 立即保存。
+具体 autosave 时间可以与 Builder 使用统一设置，例如连续 10 秒没有新的修改后自动保存。
+AI Config 修改也通过独立 API 保存，不能仅修改前端 Survey JSON。
+15 异常状态
+Survey Options 加载失败时显示：
+Failed to load survey settings. Retry.
+保存失败时显示：
+Failed to save survey settings. Retry.
+AI Configuration 加载失败时显示：
+Failed to load AI configuration.
+AI Configuration 保存失败时显示：
+Failed to save AI configuration.
+网络断开并存在未保存修改时显示：
+Changes are not saved.
+16. V1 范围
+V1 实现 Interface Language、Display Name、Survey Description、Question Numbers、Back Button、Allow Respondents to Finish Later、Incomplete Response 设置、Survey Availability、Allowed Referrer、Prevent Multiple Submissions、Prevent Search Indexing、Anonymous Responses 配置入口、Survey 级 AI Config 引用以及基础 AI Configuration。
+AI Config V1 至少支持 model、system_prompt、temperature、max_output_tokens、max_turns、include_history、history_window、timeout_seconds、max_retries、failure_behavior、response_format 和 Logging 设置；高级参数可以使用系统默认值，不需要全部显示在普通 UI 中。
+V1 不实现 Look & Feel 品牌自定义、Invitation Only、Password Protection、Authenticator、File Upload Access、Custom Error Message Library、复杂 Bot Detection、自定义 inactive message、Post-Survey Email、完整 Translation、多语言问卷内容自动翻译以及复杂 Credentials 管理。
+AI Survey Platform 数据库表设计 V1
+1. 设计原则
+V1 数据库主要保存用户、Survey、Block、Question、Survey Flow 及 AI 配置等核心信息；Survey Builder 中经常需要查询和关联的数据使用独立关系表保存，不将整个 Survey 仅作为单个大 JSON 保存；不同 Question Type 特有的配置使用 JSONB 保存；Survey Options 使用 survey_config JSONB 保存；Survey Flow 由于具有树状和嵌套结构，主体结构使用 flow_json JSONB 保存。
+数据库字段统一使用小写 snake_case 命名，例如使用 ai_config_id，不使用 AI_config_id。
+2. T_user
+用于保存平台用户信息。
+字段
+类型建议
+必填
+说明
+user_id
+UUID / VARCHAR
+是
+用户唯一标识符，主键
+created_at
+TIMESTAMP
+是
+用户账号创建时间
+updated_at
+TIMESTAMP
+是
+用户信息最后修改时间
+V1 如果之后使用 Google Login，还需要增加 Google Account、email、display_name 等字段；Authentication 模块确定以后再补充。
+3. T_survey
+用于保存所有 Survey 的核心信息。
+字段
+类型建议
+必填
+说明
+survey_id
+UUID / VARCHAR
+是
+Survey 唯一标识符，主键
+survey_type
+VARCHAR
+是
+项目类型；V1 固定为 survey，为以后扩展其他项目类型预留
+survey_name
+VARCHAR(100)
+是
+Survey 内部名称，用于 Project List
+creator_id
+UUID / VARCHAR
+是
+创建该 Survey 的用户 ID，关联 T_user.user_id
+created_at
+TIMESTAMP
+是
+Survey 创建时间
+updated_at
+TIMESTAMP
+是
+Survey 最近一次实际修改时间
+last_modified_by
+UUID / VARCHAR
+否
+最近一次修改 Survey 的用户 ID
+status
+VARCHAR / ENUM
+是
+Survey 状态，例如 draft、published、closed
+survey_config
+JSONB
+是
+Survey Options 配置
+ai_config_id
+UUID / VARCHAR
+否
+当前 Survey 默认使用的 AI Configuration，关联 T_ai_config.ai_config_id
+survey_config 用于保存 General、Responses、Availability、Security 等 Survey Options，例如：
+{
+  "general": {
+    "interface_language": "ja",
+    "display_name": "AI Persuasion Study",
+    "survey_description": "",
+    "show_question_numbers": false
+  },
+  "responses": {
+    "allow_back_button": true,
+    "allow_finish_later": true
+  },
+  "availability": {
+    "open_at": null,
+    "close_at": null
+  },
+  "security": {
+    "prevent_multiple_submissions": true,
+    "prevent_search_indexing": true,
+    "anonymize_responses": true
+  }
+}
+question_count 和 response_count
+Project List 中需要显示：
+Questions
+Responses
+但 V1 不建议直接把它们作为普通字段长期保存在 T_survey 中。
+question_count 可以通过当前 Survey 下：
+T_block
+→ T_question
+→ is_deleted = 0
+统计得到。
+response_count 则以后通过 Response 表统计正式有效 Response 数量。
+这样可以避免出现：
+实际有 13 题
+但 T_survey.question_count 仍然是 12
+这种数据不一致。
+如果以后数据量很大、实时统计影响性能，可以再增加缓存字段，例如：
+cached_question_count
+cached_response_count
+但 V1 暂时没有必要。
+4. T_survey_members
+用于表示 User 与 Survey 的多对多关系；一个 Survey 可以有多个参与者，一个 User 也可以参与多个 Survey。
+字段
+类型建议
+必填
+说明
+survey_id
+UUID / VARCHAR
+是
+关联 T_survey.survey_id
+user_id
+UUID / VARCHAR
+是
+关联 T_user.user_id
+role
+VARCHAR / ENUM
+是
+用户在该 Survey 中的权限角色
+joined_at
+TIMESTAMP
+是
+用户被加入该 Survey 的时间
+建议 survey_id + user_id 设置联合唯一约束，避免同一个用户被重复加入同一 Survey。
+role 建议使用：
+owner
+editor
+viewer
+其中：
+owner：Survey 创建者 / 拥有者；editor：可以修改 Survey；viewer：只能查看。
+不建议使用 creator 作为 role，因为“谁创建 Survey”已经由 T_survey.creator_id 记录；权限角色用 owner 会更加清楚。
+joined_at 是什么
+joined_at 不是分组字段，而是：
+这个用户什么时候获得该 Survey 的成员资格。
+例如：
+survey_id = srv_001
+user_id = usr_002
+role = editor
+joined_at = 2026-09-22 18:00:00
+表示 usr_002 在该时间被加入这个 Survey 成为 editor。
+5. T_block
+用于保存 Survey Builder 中的 Block。
+字段
+类型建议
+必填
+说明
+block_id
+UUID / VARCHAR
+是
+Block 唯一标识符，主键
+survey_id
+UUID / VARCHAR
+是
+所属 Survey，关联 T_survey.survey_id
+block_name
+VARCHAR
+是
+Block 名称
+sort_order
+INTEGER
+是
+Block 在当前 Survey 中的排序
+is_deleted
+BOOLEAN / SMALLINT
+是
+是否进入 Trash；默认 0
+deleted_at
+TIMESTAMP
+否
+Block 被删除的时间
+created_at
+TIMESTAMP
+是
+创建时间
+updated_at
+TIMESTAMP
+是
+最近修改时间
+is_deleted = 0 表示正常使用；is_deleted = 1 表示进入 Trash。
+建议 Block 也保存 deleted_at，与 Question 的删除逻辑保持一致。
+6. T_question
+用于保存 Survey 中的问题。
+字段
+类型建议
+必填
+说明
+question_id
+UUID / VARCHAR
+是
+Question 唯一标识符，主键
+block_id
+UUID / VARCHAR
+是
+所属 Block，关联 T_block.block_id
+question_type
+VARCHAR / ENUM
+是
+Question Type
+question_name
+VARCHAR
+是
+研究者内部使用的问题名称，例如 Q1
+question_text
+TEXT
+否
+Respondent 实际看到的问题文字
+sort_order
+INTEGER
+是
+Question 在所属 Block 中的顺序
+required
+BOOLEAN / SMALLINT
+是
+是否必答；0 = 非必答，1 = 必答
+config
+JSONB
+是
+不同 Question Type 的具体配置
+is_deleted
+BOOLEAN / SMALLINT
+是
+是否进入 Trash
+deleted_at
+TIMESTAMP
+否
+删除时间
+created_at
+TIMESTAMP
+是
+创建时间
+updated_at
+TIMESTAMP
+是
+最近修改时间
+V1 Question Type 至少包括：
+multiple_choice
+text_entry
+text_graphic
+matrix
+其中 Text / Graphic Question 的 required 固定为 false。
+不同类型问题的特有设置统一保存在 config JSONB 中。
+例如 Multiple Choice：
+{
+  "answer_type": "multiple",
+  "format": "list",
+  "layout": "vertical",
+  "min_selection": 1,
+  "max_selection": 2,
+  "choices": [
+    {
+      "choice_id": "ch_001",
+      "value": 1,
+      "label": "Apple"
+    },
+    {
+      "choice_id": "ch_002",
+      "value": 2,
+      "label": "Orange"
+    }
+  ]
+}
+
+7. sort_order 规则
+sort_order 使用整数保存，用于表示 Block 或 Question 的相对显示顺序。
+Question 的 sort_order 仅在其所属 Block 内有效；Block 的 sort_order 仅在所属 Survey 内有效；排序值不要求连续。
+例如：
+Block A = 10
+Block B = 20
+Block C = 30
+也是合法结构。
+向两个现有元素之间插入新元素时，可以调整目标位置及之后元素的 sort_order；删除元素时保留其原始 sort_order，用于 Trash Restore；在末尾新增元素时使用当前最大 sort_order + 1，不使用当前元素数量作为排序依据。
+恢复 Question 时，如果原 Block 仍然存在，则尽量恢复原 block_id + sort_order；如果原 Block 已不存在，则恢复至 Survey 最后一个正常 Block 的末尾。
+8. T_survey_flow
+用于保存 Survey Flow 的 Working Flow 结构。
+字段
+类型建议
+必填
+说明
+flow_id
+UUID / VARCHAR
+是
+Flow 唯一标识符，主键
+survey_id
+UUID / VARCHAR
+是
+所属 Survey
+flow_version
+INTEGER
+是
+Flow 当前版本
+schema_version
+INTEGER
+是
+Flow JSON 数据结构版本
+flow_json
+JSONB
+是
+完整 Flow 树状结构
+created_at
+TIMESTAMP
+是
+创建时间
+updated_at
+TIMESTAMP
+是
+最近修改时间
+updated_by
+UUID / VARCHAR
+否
+最后修改 Flow 的用户
+建议增加 schema_version，用于未来修改 Flow JSON 格式。
+例如：
+{
+  "elements": [
+    {
+      "element_id": "flow_001",
+      "type": "block",
+      "block_id": "blk_001",
+      "sort_order": 1
+    },
+    {
+      "element_id": "flow_002",
+      "type": "branch",
+      "sort_order": 2,
+      "config": {
+        "logic": "AND",
+        "conditions": [
+          {
+            "question_id": "q_001",
+            "operator": "equals",
+            "value": "choice_01"
+          }
+        ]
+      },
+      "children": []
+    }
+  ]
+}
+Flow JSON 中只引用稳定的 block_id、question_id、choice_id、ai_config_id 等 ID，不复制 Question 或 Block 的完整内容。
+9.T_ai_config
+用于保存 Survey Flow 中 Call AI Element 使用的 AI 配置。
+每一个 Call AI Element 原则上对应一个 AI Config；Flow Element 通过 ai_config_id 引用该配置。
+同一 Survey 中可以存在多个 Call AI Element，因此也可以存在多个 AI Config。
+字段
+类型建议
+必填
+说明
+ai_config_id
+UUID / VARCHAR
+是
+AI Config 唯一标识符
+survey_id
+UUID / VARCHAR
+是
+所属 Survey
+config_name
+VARCHAR
+是
+配置名称
+config_version
+INTEGER
+是
+AI Config 版本
+agent_name
+VARCHAR
+是
+Call AI Element 中显示的 Agent Name，例如 Conversation_1
+provider
+VARCHAR
+是
+AI Provider，例如 openai
+model
+VARCHAR
+是
+使用的模型
+system_prompt
+TEXT
+是
+Role Instruction / System Prompt
+context_template
+TEXT
+否
+Context 模板，可包含 Question / Embedded Variable Placeholder
+user_message_template
+TEXT
+是
+每轮向 AI 提供的任务指令
+input_source_config
+JSONB
+否
+当前 Call AI 使用的 Question / Variable 等输入来源
+temperature
+DECIMAL / FLOAT
+否
+Temperature
+top_p
+DECIMAL / FLOAT
+否
+Top P
+max_output_tokens
+INTEGER
+是
+单次 AI 输出最大 Token
+max_turns
+INTEGER
+是
+Conversation 最大 Turn 数
+include_history
+BOOLEAN
+是
+后续调用是否携带当前 Conversation History
+history_window
+INTEGER
+否
+如果不携带全部历史，最多携带多少条 Message
+end_condition
+VARCHAR
+是
+Conversation 结束条件；V1 固定 max_turns_reached
+timeout_seconds
+INTEGER
+是
+单次 AI Request 超时时间
+max_retries
+INTEGER
+是
+单次调用最大重试次数
+failure_behavior
+VARCHAR
+是
+AI 调用失败后的 Flow 处理方式
+response_format
+VARCHAR
+是
+text 或 json
+logging_config
+JSONB
+是
+Logging 设置
+created_at
+TIMESTAMP
+是
+创建时间
+updated_at
+TIMESTAMP
+是
+最近修改时间
+10. T_ai_run
+用于保存每一次实际 AI API 调用的运行记录。
+字段
+类型建议
+必填
+说明
+run_id
+UUID / VARCHAR
+是
+AI Run 唯一标识符
+conversation_id
+UUID / VARCHAR
+是
+所属 AI Conversation
+response_id
+UUID / VARCHAR
+是
+所属 Survey Response
+flow_element_id
+UUID / VARCHAR
+是
+触发此次调用的 Call AI Element
+ai_config_id
+UUID / VARCHAR
+是
+使用的 AI Config
+config_version
+INTEGER
+是
+实际调用时 Config Version
+turn_number
+INTEGER
+否
+此次 Run 对应哪个 Turn
+model
+VARCHAR
+是
+实际调用模型
+input_tokens
+INTEGER
+否
+Input Token 数
+output_tokens
+INTEGER
+否
+Output Token 数
+total_tokens
+INTEGER
+否
+总 Token 数
+latency_ms
+INTEGER
+否
+API 响应耗时
+是否保存完整 Prompt / Input / Output 可以根据 T_ai_config.logging_config 决定。
+conversation_id 为必填
+11. T_ai_conversation
+现在 V1 已经明确支持多轮 Conversation，所以这张表已经不是“建议以后增加”，而是应该正式进入 V1。
+用于表示：
+某一个 respondent 在某一个 Call AI Flow Element 中发生的一次完整 AI Conversation。
+字段
+类型建议
+必填
+说明
+conversation_id
+UUID / VARCHAR
+是
+Conversation 唯一标识符
+response_id
+UUID / VARCHAR
+是
+所属 Survey Response
+survey_id
+UUID / VARCHAR
+是
+所属 Survey
+flow_element_id
+UUID / VARCHAR
+是
+触发此次 Conversation 的 Call AI Element
+ai_config_id
+UUID / VARCHAR
+是
+使用的 AI Config
+config_version
+INTEGER
+是
+Conversation 开始时实际使用的 Config Version
+agent_name
+VARCHAR
+是
+当时使用的 Agent Name
+status
+VARCHAR
+是
+running、completed、failed、aborted 等
+turn_count
+INTEGER
+是
+已完成的正式 Turn 数
+end_reason
+VARCHAR
+否
+结束原因，例如 max_turns_reached
+started_at
+TIMESTAMP
+是
+Conversation 开始时间
+ended_at
+TIMESTAMP
+否
+Conversation 结束时间
+created_at
+TIMESTAMP
+是
+创建时间
+updated_at
+TIMESTAMP
+是
+最近更新时间
+12. T_ai_message
+用于保存 AI Conversation 中的具体消息。
+字段
+类型建议
+必填
+说明
+message_id
+UUID / VARCHAR
+是
+Message 唯一标识符
+conversation_id
+UUID / VARCHAR
+是
+所属 Conversation
+run_id
+UUID / VARCHAR
+否
+如果该消息由某次 AI API Run 产生，则关联对应 Run
+role
+VARCHAR
+是
+system、user、assistant
+content
+TEXT / JSONB
+是
+Message 内容
+turn_number
+INTEGER
+否
+所属 Conversation Turn
+sequence_number
+INTEGER
+是
+Message 在整个 Conversation 中的绝对顺序
+created_at
+TIMESTAMP
+是
+Message 创建时间
+13. 当前核心表关系
+T_user
+   │
+   ├──────────────┐
+   │              │
+   ▼              ▼
+T_survey_members  T_survey
+                      │
+          ┌───────────┼─────────────┐
+          ▼           ▼             ▼
+       T_block   T_survey_flow   T_ai_config
+          │                         │
+          ▼                         ▼
+      T_question                 T_ai_run
+                                      │
+                                      ▼
+                             T_ai_conversation
+                                      │
+                                      ▼
+                                T_ai_message
+其中 User 与 Survey 是多对多关系，通过 T_survey_members 关联；Survey 与 Block 是一对多；Block 与 Question 是一对多；Survey 与 Flow 在 V1 中可以是一对一 Working Flow；Survey 通过 ai_config_id 引用 AI Configuration；Response 模块建立以后，Response 会进一步连接 Survey、Question Response、AI Conversation 和 AI Run。
+14. V1 暂未设计的表
+以下数据库结构暂时不在当前阶段确定，后续独立设计：
+T_response
+T_response_answer
+T_response_session
+T_embedded_data / response_variable
+Published Version / Snapshot
+PureSpectrum Integration
+Authentication / Google Account
+API Credentials
+OPRO
+OPRO Run
+Prompt
+Score
+Mismatch
+其中 Response 相关表需要在正式开发公开问卷和 Data & Analysis 前完成；OPRO 表可以在 OPRO 可视化模块开发前单独设计，不阻塞当前 Survey Builder 开发。

@@ -1,0 +1,2861 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AI Survey Platform V2",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/capabilities": {
+      "get": {
+        "summary": "Capabilities",
+        "operationId": "capabilities_api_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "summary": "Projects",
+        "operationId": "projects_api_projects_get",
+        "parameters": [
+          {
+            "name": "search_keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "default": "",
+              "title": "Search Keyword"
+            }
+          },
+          {
+            "name": "sort_option",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "last_modified",
+                "date_created",
+                "name_az",
+                "name_za",
+                "responses"
+              ],
+              "type": "string",
+              "default": "last_modified",
+              "title": "Sort Option"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create",
+        "operationId": "create_api_projects_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/import": {
+      "post": {
+        "summary": "Import Project",
+        "operationId": "import_project_api_projects_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/working": {
+      "get": {
+        "summary": "Get Working",
+        "operationId": "get_working_api_surveys__sid__working_get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Put Working",
+        "operationId": "put_working_api_surveys__sid__working_put",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/ai-configs": {
+      "get": {
+        "summary": "Ai Configs",
+        "operationId": "ai_configs_api_surveys__sid__ai_configs_get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AIConfigData"
+                  },
+                  "title": "Response Ai Configs Api Surveys  Sid  Ai Configs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/revisions": {
+      "get": {
+        "summary": "Revisions",
+        "operationId": "revisions_api_surveys__sid__revisions_get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "survey",
+                "flow"
+              ],
+              "type": "string",
+              "default": "survey",
+              "title": "Module"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/revisions/{rid}/restore": {
+      "post": {
+        "summary": "Restore",
+        "operationId": "restore_api_surveys__sid__revisions__rid__restore_post",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "rid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rid"
+            }
+          },
+          {
+            "name": "module",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "survey",
+                "flow"
+              ],
+              "type": "string",
+              "default": "survey",
+              "title": "Module"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/trash/{kind}/{identifier}": {
+      "delete": {
+        "summary": "Permanent",
+        "operationId": "permanent_api_surveys__sid__trash__kind___identifier__delete",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "block",
+                "question"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "expected_version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Expected Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/execution-preparation": {
+      "post": {
+        "summary": "Prepare Execution",
+        "operationId": "prepare_execution_api_surveys__sid__execution_preparation_post",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "expected_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/publish": {
+      "post": {
+        "summary": "Publish",
+        "operationId": "publish_api_surveys__sid__publish_post",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/preview-sessions": {
+      "post": {
+        "summary": "Start Preview",
+        "operationId": "start_preview_api_surveys__sid__preview_sessions_post",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "expected_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Version"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/preview-data/snapshots": {
+      "get": {
+        "summary": "Preview Snapshots",
+        "operationId": "preview_snapshots_api_surveys__sid__preview_data_snapshots_get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/preview-data/{snapshot_id}/csv": {
+      "get": {
+        "summary": "Export Preview",
+        "operationId": "export_preview_api_surveys__sid__preview_data__snapshot_id__csv_get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "snapshot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Snapshot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/preview-data/{snapshot_id}": {
+      "get": {
+        "summary": "Get Preview Data",
+        "operationId": "get_preview_data_api_surveys__sid__preview_data__snapshot_id__get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "snapshot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Snapshot Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}": {
+      "get": {
+        "summary": "Get Preview",
+        "operationId": "get_preview_api_preview_sessions__identifier__get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "End Preview",
+        "operationId": "end_preview_api_preview_sessions__identifier__delete",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}/next": {
+      "post": {
+        "summary": "Next Preview",
+        "operationId": "next_preview_api_preview_sessions__identifier__next_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAnswers"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}/back": {
+      "post": {
+        "summary": "Back Preview",
+        "operationId": "back_preview_api_preview_sessions__identifier__back_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}/quit-conversation": {
+      "post": {
+        "summary": "Quit Preview Conversation",
+        "operationId": "quit_preview_conversation_api_preview_sessions__identifier__quit_conversation_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}/chat": {
+      "post": {
+        "summary": "Chat Preview",
+        "operationId": "chat_preview_api_preview_sessions__identifier__chat_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/preview-sessions/{identifier}/submit": {
+      "post": {
+        "summary": "Submit Preview",
+        "operationId": "submit_preview_api_preview_sessions__identifier__submit_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/surveys/{sid}/ai-configs/{config_id}": {
+      "put": {
+        "summary": "Put Ai Config",
+        "operationId": "put_ai_config_api_surveys__sid__ai_configs__config_id__put",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Config Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkingView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get Ai Config",
+        "operationId": "get_ai_config_api_surveys__sid__ai_configs__config_id__get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          },
+          {
+            "name": "config_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Config Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIConfigData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AIConfigData": {
+        "properties": {
+          "agent_type": {
+            "type": "string",
+            "const": "conversation",
+            "title": "Agent Type",
+            "default": "conversation"
+          },
+          "ai_config_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Ai Config Id"
+          },
+          "config_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Config Name",
+            "default": "Conversation"
+          },
+          "config_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Config Version",
+            "default": 1
+          },
+          "agent_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Agent Name",
+            "default": "Conversation_1"
+          },
+          "provider": {
+            "type": "string",
+            "const": "openai",
+            "title": "Provider",
+            "default": "openai"
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Model",
+            "default": ""
+          },
+          "system_prompt": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "System Prompt",
+            "default": ""
+          },
+          "context_template": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Context Template",
+            "default": ""
+          },
+          "user_message_template": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "User Message Template",
+            "default": ""
+          },
+          "input_source_config": {
+            "$ref": "#/components/schemas/InputSource"
+          },
+          "temperature": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "default": 0.7
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "default": 800
+          },
+          "max_turns": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Max Turns",
+            "default": 3
+          },
+          "include_history": {
+            "type": "boolean",
+            "title": "Include History",
+            "default": true
+          },
+          "history_window": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Window",
+            "default": 10
+          },
+          "end_condition": {
+            "type": "string",
+            "const": "max_turns_reached",
+            "title": "End Condition",
+            "default": "max_turns_reached"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Timeout Seconds",
+            "default": 30
+          },
+          "max_retries": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Max Retries",
+            "default": 2
+          },
+          "failure_behavior": {
+            "type": "string",
+            "enum": [
+              "skip",
+              "show_error",
+              "use_default_value",
+              "end_survey"
+            ],
+            "title": "Failure Behavior",
+            "default": "show_error"
+          },
+          "response_format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "json"
+            ],
+            "title": "Response Format",
+            "default": "text"
+          },
+          "logging_config": {
+            "$ref": "#/components/schemas/LoggingConfig"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ai_config_id"
+        ],
+        "title": "AIConfigData"
+      },
+      "AIConfigRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AIConfigData"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "config"
+        ],
+        "title": "AIConfigRequest"
+      },
+      "AIOptions": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "config_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AIOptions"
+      },
+      "AvailabilityOptions": {
+        "properties": {
+          "open_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open At"
+          },
+          "close_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AvailabilityOptions"
+      },
+      "BlockData": {
+        "properties": {
+          "question_groups": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionGroup"
+            },
+            "type": "array",
+            "title": "Question Groups"
+          },
+          "block_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Block Id"
+          },
+          "block_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Block Name"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order"
+          },
+          "is_deleted": {
+            "type": "boolean",
+            "title": "Is Deleted",
+            "default": false
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionData"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "block_id",
+          "block_name",
+          "sort_order"
+        ],
+        "title": "BlockData"
+      },
+      "ChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Message",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ChatRequest"
+      },
+      "Condition": {
+        "properties": {
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "question",
+              "variable",
+              "agent"
+            ],
+            "title": "Source Type",
+            "default": "question"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id",
+            "default": ""
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "equals",
+              "not_equals",
+              "contains",
+              "not_contains",
+              "greater",
+              "greater_equal",
+              "less",
+              "less_equal"
+            ],
+            "title": "Operator",
+            "default": "equals"
+          },
+          "value": {
+            "title": "Value",
+            "default": ""
+          },
+          "connector": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "Connector",
+            "default": "AND"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Condition"
+      },
+      "ConditionGroup-Input": {
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "title": "Group Id"
+          },
+          "path_name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Path Name",
+            "default": ""
+          },
+          "logic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AND",
+                  "OR"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logic"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "connector": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "Connector",
+            "default": "AND"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Input"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group_id"
+        ],
+        "title": "ConditionGroup"
+      },
+      "ConditionGroup-Output": {
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "title": "Group Id"
+          },
+          "path_name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Path Name",
+            "default": ""
+          },
+          "logic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AND",
+                  "OR"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logic"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "connector": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "Connector",
+            "default": "AND"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/Condition"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Output"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group_id"
+        ],
+        "title": "ConditionGroup"
+      },
+      "ElementConfig-Input": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "end_information": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "End Information",
+            "default": ""
+          },
+          "condition_groups": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionGroup-Input"
+            },
+            "type": "array",
+            "title": "Condition Groups"
+          },
+          "number_to_present": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Number To Present",
+            "default": 1
+          },
+          "evenly_present": {
+            "type": "boolean",
+            "title": "Evenly Present",
+            "default": false
+          },
+          "routing_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "first",
+                  "all"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routing Mode"
+          },
+          "randomization_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "select",
+                  "shuffle",
+                  "simple",
+                  "balanced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Randomization Mode"
+          },
+          "python_code": {
+            "type": "string",
+            "maxLength": 32768,
+            "title": "Python Code",
+            "default": ""
+          },
+          "variable_name": {
+            "type": "string",
+            "title": "Variable Name",
+            "default": ""
+          },
+          "value": {
+            "title": "Value",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ElementConfig"
+      },
+      "ElementConfig-Output": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "end_information": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "End Information",
+            "default": ""
+          },
+          "condition_groups": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionGroup-Output"
+            },
+            "type": "array",
+            "title": "Condition Groups"
+          },
+          "number_to_present": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Number To Present",
+            "default": 1
+          },
+          "evenly_present": {
+            "type": "boolean",
+            "title": "Evenly Present",
+            "default": false
+          },
+          "routing_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "first",
+                  "all"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routing Mode"
+          },
+          "randomization_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "select",
+                  "shuffle",
+                  "simple",
+                  "balanced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Randomization Mode"
+          },
+          "python_code": {
+            "type": "string",
+            "maxLength": 32768,
+            "title": "Python Code",
+            "default": ""
+          },
+          "variable_name": {
+            "type": "string",
+            "title": "Variable Name",
+            "default": ""
+          },
+          "value": {
+            "title": "Value",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ElementConfig"
+      },
+      "FlowData-Input": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Input"
+            },
+            "type": "array",
+            "title": "Elements"
+          },
+          "trash": {
+            "items": {
+              "$ref": "#/components/schemas/FlowTrash-Input"
+            },
+            "type": "array",
+            "title": "Trash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FlowData"
+      },
+      "FlowData-Output": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Output"
+            },
+            "type": "array",
+            "title": "Elements"
+          },
+          "trash": {
+            "items": {
+              "$ref": "#/components/schemas/FlowTrash-Output"
+            },
+            "type": "array",
+            "title": "Trash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FlowData"
+      },
+      "FlowElement-Input": {
+        "properties": {
+          "element_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Element Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "block",
+              "branch",
+              "randomizer",
+              "block_randomizer",
+              "participant_randomizer",
+              "python_code",
+              "embedded_data",
+              "call_ai",
+              "end_survey"
+            ],
+            "title": "Type"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order"
+          },
+          "block_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Id"
+          },
+          "ai_config_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Config Id"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ElementConfig-Input"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Input"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "element_id",
+          "type",
+          "sort_order"
+        ],
+        "title": "FlowElement"
+      },
+      "FlowElement-Output": {
+        "properties": {
+          "element_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Element Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "block",
+              "branch",
+              "randomizer",
+              "block_randomizer",
+              "participant_randomizer",
+              "python_code",
+              "embedded_data",
+              "call_ai",
+              "end_survey"
+            ],
+            "title": "Type"
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order"
+          },
+          "block_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Block Id"
+          },
+          "ai_config_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Config Id"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ElementConfig-Output"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/FlowElement-Output"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "element_id",
+          "type",
+          "sort_order"
+        ],
+        "title": "FlowElement"
+      },
+      "FlowTrash-Input": {
+        "properties": {
+          "element": {
+            "$ref": "#/components/schemas/FlowElement-Input"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Position"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deleted At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "element",
+          "position",
+          "deleted_at"
+        ],
+        "title": "FlowTrash"
+      },
+      "FlowTrash-Output": {
+        "properties": {
+          "element": {
+            "$ref": "#/components/schemas/FlowElement-Output"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Position"
+          },
+          "deleted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deleted At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "element",
+          "position",
+          "deleted_at"
+        ],
+        "title": "FlowTrash"
+      },
+      "GeneralOptions": {
+        "properties": {
+          "interface_language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ja",
+              "zh-CN"
+            ],
+            "title": "Interface Language",
+            "default": "ja"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Display Name",
+            "default": ""
+          },
+          "survey_description": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Survey Description",
+            "default": ""
+          },
+          "show_question_numbers": {
+            "type": "boolean",
+            "title": "Show Question Numbers",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GeneralOptions"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImportRequest": {
+        "properties": {
+          "import_request_id": {
+            "type": "string",
+            "title": "Import Request Id"
+          },
+          "project_name": {
+            "type": "string",
+            "title": "Project Name"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "import_request_id",
+          "project_name",
+          "file_name",
+          "content"
+        ],
+        "title": "ImportRequest"
+      },
+      "IncompleteOptions": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "record",
+              "delete"
+            ],
+            "title": "Action",
+            "default": "record"
+          },
+          "timeout_days": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Timeout Days",
+            "default": 7
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IncompleteOptions"
+      },
+      "InputSource": {
+        "properties": {
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "include_previous_conversation": {
+            "type": "boolean",
+            "title": "Include Previous Conversation",
+            "default": false
+          },
+          "allow_participant_quit": {
+            "type": "boolean",
+            "title": "Allow Participant Quit",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InputSource"
+      },
+      "LoggingConfig": {
+        "properties": {
+          "save_prompt": {
+            "type": "boolean",
+            "title": "Save Prompt",
+            "default": true
+          },
+          "save_response": {
+            "type": "boolean",
+            "title": "Save Response",
+            "default": true
+          },
+          "save_token_usage": {
+            "type": "boolean",
+            "title": "Save Token Usage",
+            "default": true
+          },
+          "save_latency": {
+            "type": "boolean",
+            "title": "Save Latency",
+            "default": true
+          },
+          "save_error": {
+            "type": "boolean",
+            "title": "Save Error",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LoggingConfig"
+      },
+      "PageTiming": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TimingEvent"
+            },
+            "type": "array",
+            "maxItems": 10000,
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "events"
+        ],
+        "title": "PageTiming"
+      },
+      "ProjectPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "ProjectPage"
+      },
+      "ProjectView": {
+        "properties": {
+          "survey_id": {
+            "type": "string",
+            "title": "Survey Id"
+          },
+          "project_type": {
+            "type": "string",
+            "const": "survey",
+            "title": "Project Type"
+          },
+          "survey_name": {
+            "type": "string",
+            "title": "Survey Name"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "question_count": {
+            "type": "integer",
+            "title": "Question Count"
+          },
+          "response_count": {
+            "type": "integer",
+            "title": "Response Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "survey_id",
+          "project_type",
+          "survey_name",
+          "status",
+          "created_at",
+          "updated_at",
+          "question_count",
+          "response_count"
+        ],
+        "title": "ProjectView"
+      },
+      "QuestionData": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Question Id"
+          },
+          "question_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Question Name"
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "multiple_choice",
+              "text_entry",
+              "text_graphic",
+              "matrix"
+            ],
+            "title": "Question Type"
+          },
+          "question_text": {
+            "type": "string",
+            "maxLength": 100000,
+            "title": "Question Text",
+            "default": ""
+          },
+          "sort_order": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sort Order"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": false
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "is_deleted": {
+            "type": "boolean",
+            "title": "Is Deleted",
+            "default": false
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "question_name",
+          "question_type",
+          "sort_order"
+        ],
+        "title": "QuestionData"
+      },
+      "QuestionGroup": {
+        "properties": {
+          "group_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Group Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Question Group"
+          },
+          "question_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Question Ids"
+          },
+          "question_order": {
+            "type": "string",
+            "enum": [
+              "original",
+              "random"
+            ],
+            "title": "Question Order",
+            "default": "original"
+          },
+          "display_mode": {
+            "type": "string",
+            "enum": [
+              "all",
+              "random_n"
+            ],
+            "title": "Display Mode",
+            "default": "all"
+          },
+          "display_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Display Count",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "group_id"
+        ],
+        "title": "QuestionGroup"
+      },
+      "ReferrerOptions": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Domains"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReferrerOptions"
+      },
+      "ResponseOptions": {
+        "properties": {
+          "allow_back_button": {
+            "type": "boolean",
+            "title": "Allow Back Button",
+            "default": true
+          },
+          "allow_finish_later": {
+            "type": "boolean",
+            "title": "Allow Finish Later",
+            "default": true
+          },
+          "incomplete_response": {
+            "$ref": "#/components/schemas/IncompleteOptions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ResponseOptions"
+      },
+      "RestoreRequest": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "RestoreRequest"
+      },
+      "SaveRequest": {
+        "properties": {
+          "survey_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Survey Name"
+          },
+          "survey_config": {
+            "$ref": "#/components/schemas/SurveyOptions"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/BlockData"
+            },
+            "type": "array",
+            "title": "Blocks"
+          },
+          "flow": {
+            "$ref": "#/components/schemas/FlowData-Input"
+          },
+          "ai_configs": {
+            "items": {
+              "$ref": "#/components/schemas/AIConfigData"
+            },
+            "type": "array",
+            "title": "Ai Configs"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "save_type": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "apply"
+            ],
+            "title": "Save Type",
+            "default": "apply"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "survey_name",
+          "expected_version"
+        ],
+        "title": "SaveRequest"
+      },
+      "SecurityOptions": {
+        "properties": {
+          "allowed_referrer": {
+            "$ref": "#/components/schemas/ReferrerOptions"
+          },
+          "prevent_multiple_submissions": {
+            "type": "boolean",
+            "title": "Prevent Multiple Submissions",
+            "default": true
+          },
+          "bot_detection_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Bot Detection Enabled",
+            "default": false
+          },
+          "prevent_search_indexing": {
+            "type": "boolean",
+            "title": "Prevent Search Indexing",
+            "default": true
+          },
+          "anonymize_responses": {
+            "type": "boolean",
+            "title": "Anonymize Responses",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SecurityOptions"
+      },
+      "SubmitAnswers": {
+        "properties": {
+          "answers": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Answers"
+          },
+          "timings": {
+            "items": {
+              "$ref": "#/components/schemas/PageTiming"
+            },
+            "type": "array",
+            "title": "Timings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "title": "SubmitAnswers"
+      },
+      "SurveyOptions": {
+        "properties": {
+          "general": {
+            "$ref": "#/components/schemas/GeneralOptions"
+          },
+          "responses": {
+            "$ref": "#/components/schemas/ResponseOptions"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/AvailabilityOptions"
+          },
+          "security": {
+            "$ref": "#/components/schemas/SecurityOptions"
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AIOptions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SurveyOptions"
+      },
+      "TimingEvent": {
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "title": "Question Id"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "question_displayed",
+              "option_selected",
+              "page_submitted"
+            ],
+            "title": "Event"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "maximum": 86400000.0,
+            "minimum": 0.0,
+            "title": "Elapsed Ms"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question_id",
+          "event",
+          "at",
+          "elapsed_ms"
+        ],
+        "title": "TimingEvent"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkingView": {
+        "properties": {
+          "survey_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Survey Name"
+          },
+          "survey_config": {
+            "$ref": "#/components/schemas/SurveyOptions"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/BlockData"
+            },
+            "type": "array",
+            "title": "Blocks"
+          },
+          "flow": {
+            "$ref": "#/components/schemas/FlowData-Output"
+          },
+          "ai_configs": {
+            "items": {
+              "$ref": "#/components/schemas/AIConfigData"
+            },
+            "type": "array",
+            "title": "Ai Configs"
+          },
+          "survey_id": {
+            "type": "string",
+            "title": "Survey Id"
+          },
+          "project_type": {
+            "type": "string",
+            "const": "survey",
+            "title": "Project Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "closed"
+            ],
+            "title": "Status"
+          },
+          "working_version": {
+            "type": "integer",
+            "title": "Working Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "survey_name",
+          "survey_id",
+          "project_type",
+          "status",
+          "working_version",
+          "updated_at",
+          "created_at",
+          "role"
+        ],
+        "title": "WorkingView"
+      }
+    }
+  }
+}

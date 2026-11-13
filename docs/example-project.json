@@ -1,0 +1,35 @@
+{
+  "survey_config": {
+    "general": {
+      "interface_language": "en"
+    }
+  },
+  "blocks": [
+    {
+      "block_id": "25041130-cf51-40a9-bca5-9812232efb58",
+      "block_name": "Welcome",
+      "sort_order": 1,
+      "questions": [
+        {
+          "question_id": "77c05bc1-c7b5-4c38-b92b-f4264dad7c06",
+          "question_name": "Q1",
+          "question_type": "text_entry",
+          "question_text": "What would you like to test?",
+          "sort_order": 1,
+          "required": true
+        }
+      ]
+    }
+  ],
+  "flow": {
+    "schema_version": 1,
+    "elements": [
+      {
+        "node_id": "1327dacc-8318-4e3c-882f-7f1262a9b12c",
+        "type": "block",
+        "sort_order": 1,
+        "block_id": "25041130-cf51-40a9-bca5-9812232efb58"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+# Local settings and API keys
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Frontend
+node_modules/
+/frontend/dist/
+
+# Local databases, exports, and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+/local-data/
+
+# Release ZIPs in the project root
+/*.zip
